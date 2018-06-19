@@ -1,0 +1,1282 @@
+package org.apache.catalina.connector.http;
+
+
+import java.io.EOFException;
+import java.io.InterruptedIOException;
+import java.io.InputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.TreeMap;
+import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.catalina.Globals;
+import org.apache.catalina.HttpRequest;
+import org.apache.catalina.Lifecycle;
+import org.apache.catalina.LifecycleException;
+import org.apache.catalina.LifecycleListener;
+import org.apache.catalina.Logger;
+import org.apache.catalina.util.FastHttpDateFormat;
+import org.apache.catalina.util.LifecycleSupport;
+import org.apache.catalina.util.RequestUtil;
+import org.apache.catalina.util.ServerInfo;
+import org.apache.catalina.util.StringManager;
+import org.apache.catalina.util.StringParser;
+
+
+/**
+ * Implementation of a request processor (and its associated thread) that may
+ * be used by an HttpConnector to process individual requests.  The connector
+ * will allocate a processor from its pool, assign a particular socket to it,
+ * and the processor will then execute the processing required to complete
+ * the request.  When the processor is completed, it will recycle itself.
+ *
+ * @author Craig R. McClanahan
+ * @author Remy Maucherat
+ * @version $Revision: 1.46 $ $Date: 2002/04/04 17:50:34 $
+ * @deprecated
+ */
+//            第3章中的HttpProcessor类 没有实现线程
+//    -----------------------而此处 不同-------------------------
+//在默认连接器中，然而，HttpProcessor类实现了java.lang.Runnable
+//        并且每个HttpProcessor实例运行在称作处理器线程(processor thread)的自身线程上。
+//        对HttpConnector创建的每个HttpProcessor实例，
+//        它的start方法将被调用，有效的启动了 HttpProcessor实例的处理线程
+final class HttpProcessor
+    implements Lifecycle, Runnable {
+
+
+    // ----------------------------------------------------- Manifest Constants
+
+
+    /**
+     * Server information string for this server.
+     */
+    private static final String SERVER_INFO =
+        ServerInfo.getServerInfo() + " (HTTP/1.1 Connector)";
+
+
+    // --------------------- Constructors
+
+    /**
+     * Construct a new HttpProcessor associated with the specified connector.
+     *
+     * @param connector HttpConnector that owns this processor
+     * @param id Identifier of this HttpProcessor (unique per connector)
+     */
+//    每个HttpProcessor实例负责解析HTTP请求行和头部，并填充请求对象。
+//    因此，每个实例关联着一个请求对象和响应对象。
+//    类HttpProcessor的构造方法包括了类HttpConnector的createRequest和createResponse方法的调用。
+    public HttpProcessor(HttpConnector connector, int id) {
+
+        super();
+        this.connector = connector;
+        this.debug = connector.getDebug();
+        this.id = id;
+        this.proxyName = connector.getProxyName();
+        this.proxyPort = connector.getProxyPort();
+        this.request = (HttpRequestImpl) connector.createRequest();
+        this.response = (HttpResponseImpl) connector.createResponse();
+        this.serverPort = connector.getPort();
+        this.threadName =
+          "HttpProcessor[" + connector.getPort() + "][" + id + "]";
+
+    }
+
+
+    // ----------------------------------------------------- Instance Variables
+
+
+    /**
+     * Is there a new socket available?
+     */
+    private boolean available = false;
+
+
+    /**
+     * The HttpConnector with which this processor is associated.
+     */
+    private HttpConnector connector = null;
+
+
+    /**
+     * The debugging detail level for this component.
+     */
+    private int debug = 0;
+
+
+    /**
+     * The identifier of this processor, unique per connector.
+     */
+    private int id = 0;
+
+
+    /**
+     * The lifecycle event support for this component.
+     */
+    private LifecycleSupport lifecycle = new LifecycleSupport(this);
+
+
+    /**
+     * The match string for identifying a session ID parameter.
+     */
+    private static final String match =
+        ";" + Globals.SESSION_PARAMETER_NAME + "=";
+
+
+    /**
+     * The match string for identifying a session ID parameter.
+     */
+    private static final char[] SESSION_ID = match.toCharArray();
+
+
+    /**
+     * The string parser we will use for parsing request lines.
+     */
+    private StringParser parser = new StringParser();
+
+
+    /**
+     * The proxy server name for our Connector.
+     */
+    private String proxyName = null;
+
+
+    /**
+     * The proxy server port for our Connector.
+     */
+    private int proxyPort = 0;
+
+
+    /**
+     * The HTTP request object we will pass to our associated container.
+     */
+    private HttpRequestImpl request = null;
+
+
+    /**
+     * The HTTP response object we will pass to our associated container.
+     */
+    private HttpResponseImpl response = null;
+
+
+    /**
+     * The actual server port for our Connector.
+     */
+    private int serverPort = 0;
+
+
+    /**
+     * The string manager for this package.
+     */
+    protected StringManager sm =
+        StringManager.getManager(Constants.Package);
+
+
+    /**
+     * The socket we are currently processing a request for.  This object
+     * is used for inter-thread communication only.
+     */
+    private Socket socket = null;
+
+
+    /**
+     * Has this component been started yet?
+     */
+    private boolean started = false;
+
+
+    /**
+     * The shutdown signal to our background thread
+     */
+    private boolean stopped = false;
+
+
+    /**
+     * The background thread.
+     */
+    private Thread thread = null;
+
+
+    /**
+     * The name to register for the background thread.
+     */
+    private String threadName = null;
+
+
+    /**
+     * The thread synchronization object.
+     */
+    private Object threadSync = new Object();
+
+
+    /**
+     * Keep alive indicator.
+     */
+    private boolean keepAlive = false;
+
+
+    /**
+     * HTTP/1.1 client.
+     */
+    private boolean http11 = true;
+
+
+    /**
+     * True if the client has asked to recieve a request acknoledgement. If so
+     * the server will send a preliminary 100 Continue response just after it
+     * has successfully parsed the request headers, and before starting
+     * reading the request entity body.
+     */
+    private boolean sendAck = false;
+
+
+    /**
+     * Ack string when pipelining HTTP requests.
+     */
+    private static final byte[] ack =
+        (new String("HTTP/1.1 100 Continue\r\n\r\n")).getBytes();
+
+
+    /**
+     * CRLF.
+     */
+    private static final byte[] CRLF = (new String("\r\n")).getBytes();
+
+
+    /**
+     * Line buffer.
+     */
+    //private char[] lineBuffer = new char[4096];
+
+
+    /**
+     * Request line buffer.
+     */
+    private HttpRequestLine requestLine = new HttpRequestLine();
+
+
+    /**
+     * Processor state
+     */
+    private int status = Constants.PROCESSOR_IDLE;
+
+
+    // --------------------------------------------------------- Public Methods
+
+
+    /**
+     * Return a String value representing this object.
+     */
+    public String toString() {
+
+        return (this.threadName);
+
+    }
+
+
+    // -------------------------------------------------------- Package Methods
+
+
+    /**
+     * Process an incoming TCP/IP connection on the specified socket.  Any
+     * exception that occurs during processing must be logged and swallowed.
+     * <b>NOTE</b>:  This method is called from our Connector's thread.  We
+     * must assign it to our own thread so that multiple simultaneous
+     * requests can be handled.
+     *
+     * @param socket TCP socket to process
+     */
+//    HttpProcessor实例用于读取套接字的输入流和解析HTTP请求的工作了。重要的一点是，
+//   assign方法不会等到 HttpProcessor完成解析工作，而是必须马上返回，以便下一个
+//    前来的HTTP请求可以被处理。每个HttpProcessor实例有自己的线程 用于解析，所以这点不是很难做到
+
+//    HttpProcessor类怎样让assign方法异步化，这样HttpProcessor实例就可以同时间为很多HTTP请求服务了。
+
+//    await方法和assign方法运行在不同的线程上。
+//    assign方法从HttpConnector的run方法中调用。
+//    我们就说这个线程是HttpConnector实例的run方法运行的处理线程。assign方法是如何通知已经被调用的await方法的？
+//    就是通过一个布尔变量available并且使用java.lang.Object的wait和notifyAll方法。
+    synchronized void assign(Socket socket) {
+        // Wait for the Processor to get the previous Socket
+        while (available) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+            }
+        }
+        // Store the newly available Socket and notify our thread
+//        当一个新的套接字被分配的时候，连接器线程调用HttpProcessor的assign方法。
+//        available的值是false，所以while循环给跳过，
+//        并且套接字给赋值给HttpProcessor实例的socket变量：
+//        this.socket = socket;
+//        连接器线程把available设置为true并调用notifyAll。
+        this.socket = socket;
+        available = true;
+        notifyAll();
+//        因为available为true，所以程序控制跳出while循环：
+//        把实例的socket赋值给一个本地变量，
+//        并把available设置为false，调用notifyAll，返回最后需要进行处理的socket
+        if ((debug >= 1) && (socket != null))
+            log(" An incoming request is being assigned");
+    }
+
+
+    // -------------------------------------------------------- Private Methods
+
+
+    /**
+     * Await a newly assigned Socket from our Connector, or <code>null</code>
+     * if we are supposed to shut down.
+     */
+//    await方法持有处理线程的控制流，直到从HttpConnector中获取到一个新的套接字。
+//    用另外一种说法就是，直到HttpConnector调用HttpProcessor实例的assign方法
+    private synchronized Socket await() {
+        // Wait for the Connector to provide a new Socket
+//        刚开始的时候，当处理器线程刚启动的时候，available为false，
+//        线程在while循环里边等待(见Table 4.1的第1列)。它将等待另一个线程调用notify或notifyAll。
+//        这就是说，调用wait方法让处理器线程暂停，直到连接器线程调用HttpProcessor实例的notifyAll方法。
+        while (!available) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+            }
+        }
+        // Notify the Connector that we have received this Socket
+//        为什么await需要使用一个本地变量(socket)而不是返回实例的socket变量呢？
+//        因为这样一来，在当前socket被完全处理之前，实例的socket变量可以赋给下一个前来的socket。
+        Socket socket = this.socket;
+        available = false;
+//        为什么await方法需要调用notifyAll呢?
+//                这是为了防止在available为true的时候另一个socket到来。
+//        在这种情况下，连接器线程将会在assign方法的while循环中停止，直到接收到处理器线程的notifyAll调用 这时候连接器线程才能继续运行
+        notifyAll();
+
+        if ((debug >= 1) && (socket != null))
+            log("  The incoming request has been awaited");
+
+        return (socket);
+
+    }
+
+
+
+    /**
+     * Log a message on the Logger associated with our Container (if any)
+     *
+     * @param message Message to be logged
+     */
+    private void log(String message) {
+
+        Logger logger = connector.getContainer().getLogger();
+        if (logger != null)
+            logger.log(threadName + " " + message);
+
+    }
+
+
+    /**
+     * Log a message on the Logger associated with our Container (if any)
+     *
+     * @param message Message to be logged
+     * @param throwable Associated exception
+     */
+    private void log(String message, Throwable throwable) {
+
+        Logger logger = connector.getContainer().getLogger();
+        if (logger != null)
+            logger.log(threadName + " " + message, throwable);
+
+    }
+
+
+    /**
+     * Parse the value of an <code>Accept-Language</code> header, and add
+     * the corresponding Locales to the current request.
+     *
+     * @param value The value of the <code>Accept-Language</code> header.
+     */
+    private void parseAcceptLanguage(String value) {
+
+        // Store the accumulated languages that have been requested in
+        // a local collection, sorted by the quality value (so we can
+        // add Locales in descending order).  The values will be ArrayLists
+        // containing the corresponding Locales to be added
+        TreeMap locales = new TreeMap();
+
+        // Preprocess the value to remove all whitespace
+        int white = value.indexOf(' ');
+        if (white < 0)
+            white = value.indexOf('\t');
+        if (white >= 0) {
+            StringBuffer sb = new StringBuffer();
+            int len = value.length();
+            for (int i = 0; i < len; i++) {
+                char ch = value.charAt(i);
+                if ((ch != ' ') && (ch != '\t'))
+                    sb.append(ch);
+            }
+            value = sb.toString();
+        }
+
+        // Process each comma-delimited language specification
+        parser.setString(value);        // ASSERT: parser is available to us
+        int length = parser.getLength();
+        while (true) {
+
+            // Extract the next comma-delimited entry
+            int start = parser.getIndex();
+            if (start >= length)
+                break;
+            int end = parser.findChar(',');
+            String entry = parser.extract(start, end).trim();
+            parser.advance();   // For the following entry
+
+            // Extract the quality factor for this entry
+            double quality = 1.0;
+            int semi = entry.indexOf(";q=");
+            if (semi >= 0) {
+                try {
+                    quality = Double.parseDouble(entry.substring(semi + 3));
+                } catch (NumberFormatException e) {
+                    quality = 0.0;
+                }
+                entry = entry.substring(0, semi);
+            }
+
+            // Skip entries we are not going to keep track of
+            if (quality < 0.00005)
+                continue;       // Zero (or effectively zero) quality factors
+            if ("*".equals(entry))
+                continue;       // FIXME - "*" entries are not handled
+
+            // Extract the language and country for this entry
+            String language = null;
+            String country = null;
+            String variant = null;
+            int dash = entry.indexOf('-');
+            if (dash < 0) {
+                language = entry;
+                country = "";
+                variant = "";
+            } else {
+                language = entry.substring(0, dash);
+                country = entry.substring(dash + 1);
+                int vDash = country.indexOf('-');
+                if (vDash > 0) {
+                    String cTemp = country.substring(0, vDash);
+                    variant = country.substring(vDash + 1);
+                    country = cTemp;
+                } else {
+                    variant = "";
+                }
+            }
+
+            // Add a new Locale to the list of Locales for this quality level
+            Locale locale = new Locale(language, country, variant);
+            Double key = new Double(-quality);  // Reverse the order
+            ArrayList values = (ArrayList) locales.get(key);
+            if (values == null) {
+                values = new ArrayList();
+                locales.put(key, values);
+            }
+            values.add(locale);
+
+        }
+
+        // Process the quality values in highest->lowest order (due to
+        // negating the Double value when creating the key)
+        Iterator keys = locales.keySet().iterator();
+        while (keys.hasNext()) {
+            Double key = (Double) keys.next();
+            ArrayList list = (ArrayList) locales.get(key);
+            Iterator values = list.iterator();
+            while (values.hasNext()) {
+                Locale locale = (Locale) values.next();
+                if (debug >= 1)
+                    log(" Adding locale '" + locale + "'");
+                request.addLocale(locale);
+            }
+        }
+
+    }
+
+
+    /**
+     * Parse and record the connection parameters related to this request.
+     *
+     * @param socket The socket on which we are connected
+     *
+     * @exception java.io.IOException if an input/output error occurs
+     * @exception javax.servlet.ServletException if a parsing error occurs
+     */
+//    parseConnection方法从套接字中获取到网络地址并把它赋予HttpRequestImpl对象。
+//    它也检查是否使用代理并把套接字赋予请求对象
+    private void parseConnection(Socket socket)
+        throws IOException, ServletException {
+
+        if (debug >= 2)
+            log("  parseConnection: address=" + socket.getInetAddress() +
+                ", port=" + connector.getPort());
+        ((HttpRequestImpl) request).setInet(socket.getInetAddress());
+        if (proxyPort != 0)
+            request.setServerPort(proxyPort);
+        else
+            request.setServerPort(serverPort);
+
+        request.setSocket(socket);
+    }
+
+
+    /**
+     * Parse the incoming HTTP request headers, and set the appropriate
+     * request headers.
+     *
+     * @param input The input stream connected to our socket
+     *
+     * @exception java.io.IOException if an input/output error occurs
+     * @exception javax.servlet.ServletException if a parsing error occurs
+     */
+    private void parseHeaders(SocketInputStream input)
+        throws IOException, ServletException {
+
+        while (true) {
+//            while循环首先调用请求对象的allocateHeader方法来获取一个空的HttpHead实例。
+//            这个实例被传递给 SocketInputStream的readHeader方法。
+            HttpHeader header = request.allocateHeader();
+
+            // Read the next header
+            input.readHeader(header);
+            if (header.nameEnd == 0) {
+                if (header.valueEnd == 0) {
+                    return;
+                } else {
+                    throw new ServletException
+                        (sm.getString("httpProcessor.parseHeaders.colon"));
+                }
+            }
+
+            String value = new String(header.value, 0, header.valueEnd);
+            if (debug >= 1)
+                log(" Header " + new String(header.name, 0, header.nameEnd)
+                    + " = " + value);
+
+ //  Set the corresponding request headers
+//   parseHeaders方法将会把头部名称和DefaultHeaders里边的名称做对比。
+//   注意的是，这样的对比是基于两个字符数组之间，而不是两个字符串之间的。
+//   第三章HttpProccessor中使用name.equals("cookie")   是字符串对比
+            if (header.equals(DefaultHeaders.AUTHORIZATION_NAME)) {
+                request.setAuthorization(value);
+            } else if (header.equals(DefaultHeaders.ACCEPT_LANGUAGE_NAME)) {
+                parseAcceptLanguage(value);
+            } else if (header.equals(DefaultHeaders.COOKIE_NAME)) {
+                Cookie cookies[] = RequestUtil.parseCookieHeader(value);
+                for (int i = 0; i < cookies.length; i++) {
+                    if (cookies[i].getName().equals
+                        (Globals.SESSION_COOKIE_NAME)) {
+                        // Override anything requested in the URL
+                        if (!request.isRequestedSessionIdFromCookie()) {
+                            // Accept only the first session id cookie
+                            request.setRequestedSessionId
+                                (cookies[i].getValue());
+                            request.setRequestedSessionCookie(true);
+                            request.setRequestedSessionURL(false);
+                            if (debug >= 1)
+                                log(" Requested cookie session id is " +
+                                    ((HttpServletRequest) request.getRequest())
+                                    .getRequestedSessionId());
+                        }
+                    }
+                    if (debug >= 1)
+                        log(" Adding cookie " + cookies[i].getName() + "=" +
+                            cookies[i].getValue());
+                    request.addCookie(cookies[i]);
+                }
+            } else if (header.equals(DefaultHeaders.CONTENT_LENGTH_NAME)) {
+                int n = -1;
+                try {
+                    n = Integer.parseInt(value);
+                } catch (Exception e) {
+                    throw new ServletException
+                        (sm.getString
+                         ("httpProcessor.parseHeaders.contentLength"));
+                }
+                request.setContentLength(n);
+            } else if (header.equals(DefaultHeaders.CONTENT_TYPE_NAME)) {
+                request.setContentType(value);
+            } else if (header.equals(DefaultHeaders.HOST_NAME)) {
+                int n = value.indexOf(':');
+                if (n < 0) {
+                    if (connector.getScheme().equals("http")) {
+                        request.setServerPort(80);
+                    } else if (connector.getScheme().equals("https")) {
+                        request.setServerPort(443);
+                    }
+                    if (proxyName != null)
+                        request.setServerName(proxyName);
+                    else
+                        request.setServerName(value);
+                } else {
+                    if (proxyName != null)
+                        request.setServerName(proxyName);
+                    else
+                        request.setServerName(value.substring(0, n).trim());
+                    if (proxyPort != 0)
+                        request.setServerPort(proxyPort);
+                    else {
+                        int port = 80;
+                        try {
+                            port =
+                                Integer.parseInt(value.substring(n+1).trim());
+                        } catch (Exception e) {
+                            throw new ServletException
+                                (sm.getString
+                                 ("httpProcessor.parseHeaders.portNumber"));
+                        }
+                        request.setServerPort(port);
+                    }
+                }
+            } else if (header.equals(DefaultHeaders.CONNECTION_NAME)) {
+                if (header.valueEquals
+                    (DefaultHeaders.CONNECTION_CLOSE_VALUE)) {
+                    keepAlive = false;
+                    response.setHeader("Connection", "close");
+                }
+                //request.setConnection(header);
+                /*
+                  if ("keep-alive".equalsIgnoreCase(value)) {
+                  keepAlive = true;
+                  }
+                */
+            } else if (header.equals(DefaultHeaders.EXPECT_NAME)) {
+                if (header.valueEquals(DefaultHeaders.EXPECT_100_VALUE))
+                    sendAck = true;
+                else
+                    throw new ServletException
+                        (sm.getString
+                         ("httpProcessor.parseHeaders.unknownExpectation"));
+            } else if (header.equals(DefaultHeaders.TRANSFER_ENCODING_NAME)) {
+                //request.setTransferEncoding(header);
+            }
+            request.nextHeader();
+        }
+
+    }
+
+
+    /**
+     * Parse the incoming HTTP request and set the corresponding HTTP request
+     * properties.
+     *
+     * @param input The input stream attached to our socket
+     * @param output The output stream of the socket
+     *
+     * @exception java.io.IOException if an input/output error occurs
+     * @exception javax.servlet.ServletException if a parsing error occurs
+     */
+//    同第三章的parseRequest方法
+    private void parseRequest(SocketInputStream input, OutputStream output)
+        throws IOException, ServletException {
+
+        // Parse the incoming request line
+        input.readRequestLine(requestLine);
+
+        // When the previous method returns, we're actually processing a
+        // request
+        status = Constants.PROCESSOR_ACTIVE;
+
+        String method = new String(requestLine.method, 0, requestLine.methodEnd);
+        String uri = null;
+        String protocol = new String(requestLine.protocol, 0,
+                                     requestLine.protocolEnd);
+
+        //System.out.println(" Method:" + method + "_ Uri:" + uri
+        //                   + "_ Protocol:" + protocol);
+
+        if (protocol.length() == 0)
+            protocol = "HTTP/0.9";
+
+        // Now check if the connection should be kept alive after parsing the
+        // request.
+        if ( protocol.equals("HTTP/1.1") ) {
+            http11 = true;
+            sendAck = false;
+        } else {
+            http11 = false;
+            sendAck = false;
+            // For HTTP/1.0, connection are not persistent by default,
+            // unless specified with a Connection: Keep-Alive header.
+            keepAlive = false;
+        }
+
+        // Validate the incoming request line
+        if (method.length() < 1) {
+            throw new ServletException
+                (sm.getString("httpProcessor.parseRequest.method"));
+        } else if (requestLine.uriEnd < 1) {
+            throw new ServletException
+                (sm.getString("httpProcessor.parseRequest.uri"));
+        }
+
+        // Parse any query parameters out of the request URI
+        int question = requestLine.indexOf("?");
+        if (question >= 0) {
+            request.setQueryString
+                (new String(requestLine.uri, question + 1,
+                            requestLine.uriEnd - question - 1));
+            if (debug >= 1)
+                log(" Query string is " +
+                    ((HttpServletRequest) request.getRequest())
+                    .getQueryString());
+            uri = new String(requestLine.uri, 0, question);
+        } else {
+            request.setQueryString(null);
+            uri = new String(requestLine.uri, 0, requestLine.uriEnd);
+        }
+
+        // Checking for an absolute URI (with the HTTP protocol)
+        if (!uri.startsWith("/")) {
+            int pos = uri.indexOf("://");
+            // Parsing out protocol and host name
+            if (pos != -1) {
+                pos = uri.indexOf('/', pos + 3);
+                if (pos == -1) {
+                    uri = "";
+                } else {
+                    uri = uri.substring(pos);
+                }
+            }
+        }
+
+        // Parse any requested session ID out of the request URI
+        int semicolon = uri.indexOf(match);
+        if (semicolon >= 0) {
+            String rest = uri.substring(semicolon + match.length());
+            int semicolon2 = rest.indexOf(';');
+            if (semicolon2 >= 0) {
+                request.setRequestedSessionId(rest.substring(0, semicolon2));
+                rest = rest.substring(semicolon2);
+            } else {
+                request.setRequestedSessionId(rest);
+                rest = "";
+            }
+            request.setRequestedSessionURL(true);
+            uri = uri.substring(0, semicolon) + rest;
+            if (debug >= 1)
+                log(" Requested URL session id is " +
+                    ((HttpServletRequest) request.getRequest())
+                    .getRequestedSessionId());
+        } else {
+            request.setRequestedSessionId(null);
+            request.setRequestedSessionURL(false);
+        }
+
+        // Normalize URI (using String operations at the moment)
+        String normalizedUri = normalize(uri);
+        if (debug >= 1)
+            log("Normalized: '" + uri + "' to '" + normalizedUri + "'");
+
+        // Set the corresponding request properties
+        ((HttpRequest) request).setMethod(method);
+        request.setProtocol(protocol);
+        if (normalizedUri != null) {
+            ((HttpRequest) request).setRequestURI(normalizedUri);
+        } else {
+            ((HttpRequest) request).setRequestURI(uri);
+        }
+        request.setSecure(connector.getSecure());
+        request.setScheme(connector.getScheme());
+
+        if (normalizedUri == null) {
+            log(" Invalid request URI: '" + uri + "'");
+            throw new ServletException("Invalid URI: " + uri + "'");
+        }
+
+        if (debug >= 1)
+            log(" Request is '" + method + "' for '" + uri +
+                "' with protocol '" + protocol + "'");
+
+    }
+
+
+    /**
+     * Return a context-relative path, beginning with a "/", that represents
+     * the canonical version of the specified path after ".." and "." elements
+     * are resolved out.  If the specified path attempts to go outside the
+     * boundaries of the current context (i.e. too many ".." path elements
+     * are present), return <code>null</code> instead.
+     *
+     * @param path Path to be normalized
+     */
+    protected String normalize(String path) {
+
+        if (path == null)
+            return null;
+
+        // Create a place for the normalized path
+        String normalized = path;
+
+        // Normalize "/%7E" and "/%7e" at the beginning to "/~"
+        if (normalized.startsWith("/%7E") ||
+            normalized.startsWith("/%7e"))
+            normalized = "/~" + normalized.substring(4);
+
+        // Prevent encoding '%', '/', '.' and '\', which are special reserved
+        // characters
+        if ((normalized.indexOf("%25") >= 0)
+            || (normalized.indexOf("%2F") >= 0)
+            || (normalized.indexOf("%2E") >= 0)
+            || (normalized.indexOf("%5C") >= 0)
+            || (normalized.indexOf("%2f") >= 0)
+            || (normalized.indexOf("%2e") >= 0)
+            || (normalized.indexOf("%5c") >= 0)) {
+            return null;
+        }
+
+        if (normalized.equals("/."))
+            return "/";
+
+        // Normalize the slashes and add leading slash if necessary
+        if (normalized.indexOf('\\') >= 0)
+            normalized = normalized.replace('\\', '/');
+        if (!normalized.startsWith("/"))
+            normalized = "/" + normalized;
+
+        // Resolve occurrences of "//" in the normalized path
+        while (true) {
+            int index = normalized.indexOf("//");
+            if (index < 0)
+                break;
+            normalized = normalized.substring(0, index) +
+                normalized.substring(index + 1);
+        }
+
+        // Resolve occurrences of "/./" in the normalized path
+        while (true) {
+            int index = normalized.indexOf("/./");
+            if (index < 0)
+                break;
+            normalized = normalized.substring(0, index) +
+                normalized.substring(index + 2);
+        }
+
+        // Resolve occurrences of "/../" in the normalized path
+        while (true) {
+            int index = normalized.indexOf("/../");
+            if (index < 0)
+                break;
+            if (index == 0)
+                return (null);  // Trying to go outside our context
+            int index2 = normalized.lastIndexOf('/', index - 1);
+            normalized = normalized.substring(0, index2) +
+                normalized.substring(index + 3);
+        }
+
+        // Declare occurrences of "/..." (three or more dots) to be invalid
+        // (on some Windows platforms this walks the directory tree!!!)
+        if (normalized.indexOf("/...") >= 0)
+            return (null);
+
+        // Return the normalized path that we have completed
+        return (normalized);
+
+    }
+
+
+    /**
+     * Send a confirmation that a request has been processed when pipelining.
+     * HTTP/1.1 100 Continue is sent back to the client.
+     *
+     * @param output Socket output stream
+     */
+    private void ackRequest(OutputStream output)
+        throws IOException {
+        if (sendAck)
+            output.write(ack);
+    }
+
+
+    /**
+     * Process an incoming HTTP request on the Socket that has been assigned
+     * to this Processor.  Any exceptions that occur during processing must be
+     * swallowed and dealt with.
+     *
+     * @param socket The socket on which we are connected to the client
+     */
+
+    private void process(Socket socket) {
+//  布尔变量ok来指代在处理过程中是否发现错误
+//  finishResponse来指代Response接口中的finishResponse方法是否应该被调用
+        boolean ok = true;
+        boolean finishResponse = true;
+        SocketInputStream input = null;
+        OutputStream output = null;
+
+        // Construct and initialize the objects we will need
+        try {
+//            SocketInputStream的构造方法同样传递了从连接器获得的缓冲区大小，
+//            而不是从HttpProcessor的本地变量获得。
+//            这是因为对于默认连接器的用户而言，HttpProcessor是不可访问的。
+//            通过传递Connector接口的缓冲区大小，这就使得使用连接器的任何人都可以设置缓冲大小。
+            input = new SocketInputStream(socket.getInputStream(),
+                                          connector.getBufferSize());
+        } catch (Exception e) {
+            log("process.create", e);
+            ok = false;
+        }
+//        布尔变量keepAlive,stopped和http11。
+//        keepAlive表示连接是否是持久的，
+//        stopped表示HttpProcessor实例是否已经被连接器终止来确认process是否也应该停止，
+//        http11表示 从web客户端过来的HTTP请求是否支持HTTP 1.1。
+        keepAlive = true;
+
+//        有个while循环用来保持从输入流中读取，直到HttpProcessor被停止，
+//        一个异常被抛出或者连接给关闭为止。
+        while (!stopped && ok && keepAlive) {
+
+            finishResponse = true;
+
+            try {
+                request.setStream(input);
+                request.setResponse(response);
+                output = socket.getOutputStream();
+                response.setStream(output);
+                response.setRequest(request);
+                ((HttpServletResponse) response.getResponse()).setHeader
+                    ("Server", SERVER_INFO);
+            } catch (Exception e) {
+                log("process.create", e);
+                ok = false;
+            }
+
+
+            // Parse the incoming request
+            try {
+                if (ok) {
+
+                    parseConnection(socket);
+                    parseRequest(input, output);
+                    if (!request.getRequest().getProtocol().startsWith("HTTP/0"))
+                        parseHeaders(input);
+
+//                    parseConnection方法获得协议的值，像HTTP0.9, HTTP1.0或HTTP1.1。
+//                    如果协议是HTTP1.0，keepAlive设置为false，因为HTTP1.0不支持持久连接。
+//                    如果在HTTP请求里边找到Expect: 100-continue的头部信息，则parseHeaders方法将把sendAck设置为true。
+//                    如果协议是HTTP1.1，并且web客户端发送头部Expect: 100-continue的话，通过调用ackRequest方法它将响应这个头部。
+//                    它将会测试组块是否是允许的。
+                    if (http11) {
+                        // Sending a request acknowledge back to the client if
+                        // requested.
+//                      ackRequest方法测试sendAck的值，并在sendAck为true的时候发送下面的字符串：
+//                      HTTP/1.1 100 Continue\r\n\r\n
+                        ackRequest(output);
+                        // If the protocol is HTTP/1.1, chunking is allowed.
+                        if (connector.isChunkingAllowed())
+                            response.setAllowChunking(true);
+                    }
+
+                }
+//         在解析HTTP请求的过程中，有可能会抛出异常。任何异常将会把ok或者finishResponse设置为false
+            } catch (EOFException e) {
+                // It's very likely to be a socket disconnect on either the
+                // client or the server
+                ok = false;
+                finishResponse = false;
+            } catch (ServletException e) {
+                ok = false;
+                try {
+                    ((HttpServletResponse) response.getResponse())
+                        .sendError(HttpServletResponse.SC_BAD_REQUEST);
+                } catch (Exception f) {
+                    ;
+                }
+            } catch (InterruptedIOException e) {
+                if (debug > 1) {
+                    try {
+                        log("process.parse", e);
+                        ((HttpServletResponse) response.getResponse())
+                            .sendError(HttpServletResponse.SC_BAD_REQUEST);
+                    } catch (Exception f) {
+                        ;
+                    }
+                }
+                ok = false;
+            } catch (Exception e) {
+                try {
+                    log("process.parse", e);
+                    ((HttpServletResponse) response.getResponse()).sendError
+                        (HttpServletResponse.SC_BAD_REQUEST);
+                } catch (Exception f) {
+                    ;
+                }
+                ok = false;
+            }
+
+            // Ask our Container to process this request
+            try {
+                ((HttpServletResponse) response).setHeader
+                    ("Date", FastHttpDateFormat.getCurrentDate());
+                if (ok) {
+            //          在解析过后，process方法把请求和响应对象传递给容器的invoke方法：
+                    connector.getContainer().invoke(request, response);
+                }
+            } catch (ServletException e) {
+                log("process.invoke", e);
+                try {
+                    ((HttpServletResponse) response.getResponse()).sendError
+                        (HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                } catch (Exception f) {
+                    ;
+                }
+                ok = false;
+            } catch (InterruptedIOException e) {
+                ok = false;
+            } catch (Throwable e) {
+                log("process.invoke", e);
+                try {
+                    ((HttpServletResponse) response.getResponse()).sendError
+                        (HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                } catch (Exception f) {
+                    ;
+                }
+                ok = false;
+            }
+
+            // Finish up the handling of the request
+//            接着，如果finishResponse仍然是true，
+//            响应对象的finishResponse方法和请求对象的finishRequest方法将被调用，并且结束输出。
+            if (finishResponse) {
+                try {
+                    response.finishResponse();
+                } catch (IOException e) {
+                    ok = false;
+                } catch (Throwable e) {
+                    log("process.invoke", e);
+                    ok = false;
+                }
+                try {
+                    request.finishRequest();
+                } catch (IOException e) {
+                    ok = false;
+                } catch (Throwable e) {
+                    log("process.invoke", e);
+                    ok = false;
+                }
+                try {
+                    if (output != null)
+                        output.flush();
+                } catch (IOException e) {
+                    ok = false;
+                }
+            }
+
+            // We have to check if the connection closure has been requested
+            // by the application or the response stream (in case of HTTP/1.0
+            // and keep-alive).
+//           检查响应的Connection头部是否已经在servlet内部设为close，或者协议是HTTP1.0
+//            如果是这种情况的话，keepAlive设置为false。同样，请求和响应对象接着会被回收利用。
+            if ( "close".equals(response.getHeader("Connection")) ) {
+                keepAlive = false;
+            }
+
+            // End of request processing
+            status = Constants.PROCESSOR_IDLE;
+
+            // Recycling the request and the response objects
+            request.recycle();
+            response.recycle();
+
+        }
+//        在这个场景中，如果哦keepAlive是true的话，while循环将会在开头就启动。
+//        因为在前面的解析过程中和容器的invoke方法中没有出现错误，
+//        或者HttpProcessor实例没有被停止。否则，shutdownInput方法将会调用，而套接字将被关闭。
+        try {
+//            shutdownInput方法检查是否有未读取的字节。如果有的话，跳过那些字节。
+            shutdownInput(input);
+            socket.close();
+        } catch (IOException e) {
+            ;
+        } catch (Throwable e) {
+            log("process.invoke", e);
+        }
+        socket = null;
+
+
+
+    }
+
+
+    protected void shutdownInput(InputStream input) {
+        try {
+            int available = input.available();
+            // skip any unread (bogus) bytes
+            if (available > 0) {
+                input.skip(available);
+            }
+        } catch (Throwable e) {
+            ;
+        }
+    }
+
+
+    // ---------------------------------------------- Background Thread Methods
+
+
+    /**
+     * The background thread that listens for incoming TCP/IP connections and
+     * hands them off to an appropriate processor.
+     */
+//    run方法中的while循环按照这样的循序进行：获取一个套接字，处理它，
+//    调用连接器的recycle方法把当前的HttpProcessor实例推回栈。
+    public void run() {
+
+        // Process requests until we receive a shutdown signal
+        while (!stopped) {
+
+            // Wait for the next socket to be assigned
+            Socket socket = await();
+            if (socket == null)
+                continue;
+
+            // Process the request from this socket
+            try {
+                process(socket);
+            } catch (Throwable t) {
+                log("process.invoke", t);
+            }
+
+            // Finish up this request
+            connector.recycle(this);
+
+        }
+
+        // Tell threadStop() we have shut ourselves down successfully
+        synchronized (threadSync) {
+            threadSync.notifyAll();
+        }
+
+    }
+
+
+    /**
+     * Start the background processing thread.
+     */
+    private void threadStart() {
+
+        log(sm.getString("httpProcessor.starting"));
+
+        thread = new Thread(this, threadName);
+        thread.setDaemon(true);
+        thread.start();
+
+        if (debug >= 1)
+            log(" Background thread has been started");
+
+    }
+
+
+    /**
+     * Stop the background processing thread.
+     */
+    private void threadStop() {
+
+        log(sm.getString("httpProcessor.stopping"));
+
+        stopped = true;
+        assign(null);
+
+        if (status != Constants.PROCESSOR_IDLE) {
+            // Only wait if the processor is actually processing a command
+            synchronized (threadSync) {
+                try {
+                    threadSync.wait(5000);
+                } catch (InterruptedException e) {
+                    ;
+                }
+            }
+        }
+        thread = null;
+
+    }
+
+
+    // ------------------------------------------------------ Lifecycle Methods
+
+
+    /**
+     * Add a lifecycle event listener to this component.
+     *
+     * @param listener The listener to add
+     */
+    public void addLifecycleListener(LifecycleListener listener) {
+
+        lifecycle.addLifecycleListener(listener);
+
+    }
+
+
+    /**
+     * Get the lifecycle listeners associated with this lifecycle. If this
+     * Lifecycle has no listeners registered, a zero-length array is returned.
+     */
+    public LifecycleListener[] findLifecycleListeners() {
+
+        return lifecycle.findLifecycleListeners();
+
+    }
+
+
+    /**
+     * Remove a lifecycle event listener from this component.
+     *
+     * @param listener The listener to add
+     */
+    public void removeLifecycleListener(LifecycleListener listener) {
+
+        lifecycle.removeLifecycleListener(listener);
+
+    }
+
+
+    /**
+     * Start the background thread we will use for request processing.
+     *
+     * @exception org.apache.catalina.LifecycleException if a fatal startup error occurs
+     */
+    public void start() throws LifecycleException {
+
+        if (started)
+            throw new LifecycleException
+                (sm.getString("httpProcessor.alreadyStarted"));
+        lifecycle.fireLifecycleEvent(START_EVENT, null);
+        started = true;
+
+        threadStart();
+
+    }
+
+
+    /**
+     * Stop the background thread we will use for request processing.
+     *
+     * @exception org.apache.catalina.LifecycleException if a fatal shutdown error occurs
+     */
+    public void stop() throws LifecycleException {
+
+        if (!started)
+            throw new LifecycleException
+                (sm.getString("httpProcessor.notStarted"));
+        lifecycle.fireLifecycleEvent(STOP_EVENT, null);
+        started = false;
+
+        threadStop();
+
+    }
+
+
+}
