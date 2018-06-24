@@ -86,14 +86,20 @@ import org.apache.catalina.util.StringManager;
  * @version $Revision: 1.8 $ $Date: 2002/06/09 02:19:43 $
  */
 
-//FileLogger是LoggerBase类中最复杂的
+//FileLogger是LoggerBase类中最复杂的。它将从关联容器收到的信息写到文件中，
+// 每个信息可以选择性的加上时间戳。在第一次实例化的时候，
+// 该类的实例会创建一个文件，该文件的名字带有日期信息。
+// 如果日期改变了，它会创建一个新的文件并把信息写在里面。
+
+//    在Tomcat4中，FileLogger类实现了Lifecycle接口，
+//            所以它可以跟其它实现org.apache.catalina.Lifecycle接口的组件一样启动和停止。
+//
+//    在Tomcat5中，它是实现了Lifecycle接口的LoggerBase类的子类。
 public class FileLogger
     extends LoggerBase
     implements Lifecycle {
 
-
     // ----------------------------------------------------- Instance Variables
-
 
     /**
      * The as-of date for the currently open log file, or a zero-length
@@ -272,10 +278,21 @@ public class FileLogger
     public void log(String msg) {
 
         // Construct the timestamp we will use, if requested
+//        Log方法首先创建一个java.sql.Timestamp类的实例，该类是java.util.Date的瘦包装器 (thin wrapper)。
+//        初始化时间戳的目的是更容易的得到当前时间。
+//        在该方法中，将当前时间的long格式传递给Timestamp类并构建Timestamp类实例。
         Timestamp ts = new Timestamp(System.currentTimeMillis());
+//        使用Timestamp类的toString方法，
+//        可以得到当前时间的字符串表示形式，字符串输出的形式如下格式：
+//        yyyy-mm-dd hh:mm: SS.fffffffff 其中fffffffff表示从00:00:00开始的毫微秒。
+//        在方法中使用subString方法得到日期和小时。
         String tsString = ts.toString().substring(0, 19);
+//         使用如下语句得到日期
         String tsDate = tsString.substring(0, 10);
-
+   //        log方法接受一个消息并把消息写到日志文件中
+   //        如果日期改变了的话，log方法关闭当前文件并打开一个新文件
+//        比较tsData和String变量date的值，如果tsDate和date的值不同，
+//        它关闭当前日志文件，将tsDate的值赋给date并打开一个新日志文件。
         // If the date has changed, switch log files
         if (!date.equals(tsDate)) {
             synchronized (this) {
@@ -305,6 +322,8 @@ public class FileLogger
     /**
      * Close the currently open log file (if any)
      */
+//    Close方法清空PrintWriter变量writer，然后关闭PrintWriter并将writer设置为null，
+//    并将date设置为空字符串
     private void close() {
 
         if (writer == null)
@@ -320,18 +339,24 @@ public class FileLogger
     /**
      * Open the new log file for the date specified by <code>date</code>.
      */
+//    open方法在指定目录中创建一个新日志文件
     private void open() {
 
         // Create the directory if necessary
+//        open方法首先应该创建日志的目录是否存在，
+//        如果目录不存在，则首先创建目录。目录存放在该类的变量中。
         File dir = new File(directory);
         if (!dir.isAbsolute())
             dir = new File(System.getProperty("catalina.base"), directory);
         dir.mkdirs();
 
+//        然后组成该文件的路径名，由目录路径、前缀、日期和后缀组成。
         // Open the current log file
         try {
             String pathname = dir.getAbsolutePath() + File.separator +
                 prefix + date + suffix;
+//            java.io.PrintWriter类的一个实例，然后将该PringWriter实例给改了的变量writer。
+//            log方法使用writer来记录信息。
             writer = new PrintWriter(new FileWriter(pathname, true), true);
         } catch (IOException e) {
             writer = null;
@@ -412,6 +437,7 @@ public class FileLogger
         if (!started)
             throw new LifecycleException
                 (sm.getString("fileLogger.notStarted"));
+//        stop方法调用了该类的关闭日志文件的私有方法（close方法）
         lifecycle.fireLifecycleEvent(STOP_EVENT, null);
         started = false;
 
