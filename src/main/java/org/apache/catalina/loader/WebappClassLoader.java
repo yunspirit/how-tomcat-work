@@ -140,9 +140,18 @@ import org.apache.naming.resources.Resource;
  * @author Craig R. McClanahan
  * @version $Revision: 1.46 $ $Date: 2002/08/28 10:05:05 $
  */
-public class WebappClassLoader
-    extends URLClassLoader
-    implements Reloader, Lifecycle {
+//无论一个跟容器相关的加载器何时需要一个servlet类，
+//当它的invoke方法被调用的时候，容器首先调用加载器的getClassLoader方法获得一个加载器。
+//然后容器调用loadClass方法来加载servlet类
+//---------------------------------------------------------------------------
+// webappClassLoader被可以的进行了优化和安全方面的考虑。
+// 例如它缓存了以前加载的类以改进性能，
+// 下一次收到第一次没有找到的类的请求的时候，可以直接抛出ClassNotFound异常
+//    ---------------------------------------------------------------------
+// WebappClassLoader在源列表以及特定的JAR文件中查找类。
+// 出于安全性的考虑，WebappClassLoader类不允许一些特定的类被加载。
+// 这些类被存储在一个String类型的数组中，现在仅仅有一个成员。
+public class WebappClassLoader extends URLClassLoader implements Reloader, Lifecycle {
 
     protected class PrivilegedFindResource
         implements PrivilegedAction {
@@ -182,6 +191,7 @@ public class WebappClassLoader
      * Set of package names which are not allowed to be loaded from a webapp
      * class loader without delegating first.
      */
+//    在委派给系统加载器的时候，你也不允许加载属于该包的其它类或者它的子包：
     private static final String[] packageTriggers = {
         "javax",                                     // Java extensions
         "org.xml.sax",                               // SAX 1 & 2
@@ -253,12 +263,14 @@ public class WebappClassLoader
      * The cache of ResourceEntry for classes and resources we have loaded,
      * keyed by resource name.
      */
+//所有缓存的源被存放在一个叫做resourceEntries的HashMap中，键值为源名
     protected HashMap resourceEntries = new HashMap();
 
 
     /**
      * The list of not found resources.
      */
+//所有找不到的源都被放在一个名为notFoundResources的HashMap中。
     protected HashMap notFoundResources = new HashMap();
 
 

@@ -98,7 +98,20 @@ import java.beans.PropertyChangeListener;
  * @author Craig R. McClanahan
  * @version $Revision: 1.6 $ $Date: 2002/09/19 22:55:47 $
  */
+//像前面章节中那样使用系统的加载器来加载servlet和其他需要的类，
+//        这样servlet就可以进入Java虚拟机CLASSPATH环境下面的任何类和类库，
+//        这会带来安全隐患。
+//        Servlet只允许访问WEB-INF/目录及其子目录下面的类以及部署在WEB-INF/lib目录 下的类库。
+//        所以一个servlet容器需要一个自己的加载器，该加载器遵守一些特定的规则来加载类。
+//        在Catalina中，加载器使用org.apache.catalina.Loader接口表示。
 
+//    在Web应用程序中加载servlet和其他类需要遵循一些规则。
+//            例如，在一个应用程序中Servlet可以使用部署到WEB-INF/classes目录和任何子目录下面的类。
+//            然而，没有servlet的不能访问其他类，即使这些类是在运行Tomcat 所在的JVM的CLASSPATH中。
+//  一个servlet只能访问WEB-INF/lib目录下的类库，而不能访问其他目录下面的。
+//  --------->>>>重点>>>>>>>>>一个Tomcat类加载器表示一个Web应用程序加载器，而不是一个类加载器。
+//  一个加载器必须实现org.apache.catalina.Loader接口。
+//   加载器的实现使用定制的类加载器org.apache.catalina.loader.WebappClassLoader。
 public interface Loader {
 
 
@@ -114,6 +127,7 @@ public interface Loader {
     /**
      * Return the Container with which this Loader has been associated.
      */
+//    与上下文相关联
     public Container getContainer();
 
 
@@ -122,6 +136,7 @@ public interface Loader {
      *
      * @param container The associated Container
      */
+//    与上下文相关联
     public void setContainer(Container container);
 
 
@@ -143,6 +158,7 @@ public interface Loader {
      * Return the "follow standard delegation model" flag used to configure
      * our ClassLoader.
      */
+//  一个加载器的实现可以确定是否委派给父加载器
     public boolean getDelegate();
 
 
@@ -152,6 +168,7 @@ public interface Loader {
      *
      * @param delegate The new flag
      */
+//  一个加载器的实现可以确定是否委派给父加载器类
     public void setDelegate(boolean delegate);
 
 
@@ -163,9 +180,14 @@ public interface Loader {
     public String getInfo();
 
 
+// 另外两种方法，setReloadable和getReloadable，用于确定加载器中是否可以使用重加载。
+// 默认情况下，在标准的上下文实现中（org.apache.catalina.core.StandardContext类将在第12章讨论）重载机制并未启用。
+// 因此，要使得上下文启动重载机制，需要在server.xml文件添加一些元素如下：
+// <Context path="/myApp" docBase="myApp" debug="0" reloadable="true"/>
     /**
      * Return the reloadable flag for this Loader.
      */
+//    setReloadable和getReloadable，用于确定加载器中是否可以使用重加载
     public boolean getReloadable();
 
 
@@ -174,6 +196,7 @@ public interface Loader {
      *
      * @param reloadable The new reloadable flag
      */
+//    setReloadable和getReloadable，用于确定加载器中是否可以使用重加载
     public void setReloadable(boolean reloadable);
 
 
@@ -193,6 +216,7 @@ public interface Loader {
      *
      * @param repository Repository to be added
      */
+//    用于添加一个库
     public void addRepository(String repository);
 
 
@@ -200,6 +224,7 @@ public interface Loader {
      * Return the set of repositories defined for this class loader.
      * If none are defined, a zero-length array is returned.
      */
+//    用于返回一个所有库的队列
     public String[] findRepositories();
 
 
@@ -207,6 +232,11 @@ public interface Loader {
      * Has the internal repository associated with this Loader been modified,
      * such that the loaded classes should be reloaded?
      */
+//    一个servlet程序员可以重新编译servlet或辅助类，新类将被重新加载而不需要重新启动Tomcat加载。
+//    为了达到重新加载的目的，Loader接口有修改方法。
+//    在加载器的实现中，如果在其库中一个或多个类别已被修改，modeified方法必须返回true，因此需要重新加载。
+//    一个加载器自己并不进行重新加载，而是调用上下文接口的重载方法。
+//
     public boolean modified();
 
 

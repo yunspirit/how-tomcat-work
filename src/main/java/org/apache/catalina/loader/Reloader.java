@@ -74,6 +74,9 @@ package org.apache.catalina.loader;
  * @version $Revision: 1.5 $ $Date: 2001/07/22 20:25:10 $
  */
 
+//它需要支持在WEB-INF/classes或者是WEB-INF/lib目录被改变的时候会重新加载。
+// Tomcat的加载器实现中使用一个单独的线程来检查servlet和支持类文件的时间戳。
+// 要支持类的自动重新加载，一个加载器类必须实现org.apache.catalina.loader.Reloader接口。
 public interface Reloader {
 
 
@@ -95,6 +98,7 @@ public interface Reloader {
      * loader.  If there are no repositories, a zero-length array is
      * returned.
      */
+//    findRepositories方法用于返回实现了Reloader接口的加载器的所有的库。
     public String[] findRepositories();
 
 

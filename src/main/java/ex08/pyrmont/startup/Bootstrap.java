@@ -30,6 +30,10 @@ public final class Bootstrap {
 
     Context context = new StandardContext();
     // StandardContext's start method adds a default mapper
+//    这样做跟设置如下设置server.xml效果相同：
+//    -----------------<Context path="/myApp" docBase="myApp"/>
+//    其中path为外部访问的虚拟目录URL
+//            docBase为webapps下的应用目录
     context.setPath("/myApp");
     context.setDocBase("myApp");
 
