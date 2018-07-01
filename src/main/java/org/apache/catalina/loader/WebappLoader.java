@@ -120,6 +120,27 @@ import org.apache.catalina.util.StringManager;
  * @version $Revision: 1.30 $ $Date: 2002/09/20 21:20:44 $
  */
 
+//它表示一个web应用程序的加载器，负责给web应用程序加载类
+//    WebappLoader创建一个org.apache.catalina.loader.WebappClassLoader类的实例作为它的类加载器。
+//    像其他的Catalina组件一样，WebappLoader实现了org.apache.catalina.Lifecycle接口，
+//    可由关联容器启动和停止。
+
+//    WebappLoader类还实现了java.lang.Runnable接口，
+//    所以可以通过一个线程来重复的调用modified方法，
+//    如果modified方法返回true，WebappLoader实例它的关联容器。
+//    类通过上下文重新加载自己，而不是WebappLoader
+
+//--------------WebappLoader类的start方法被调用的时候，将会完成下面几项重要任务：
+//· Creating a class loader
+//· Setting repositories
+//· Setting the class path
+//· Setting permissions
+//· Starting a new thread for auto-reload.
+//· 创建一个类加载器
+//· 设置库
+//· 设置类路径
+//· 设置访问权限
+//· 开启一个新线程用来进行自动重载
 public class WebappLoader
     implements Lifecycle, Loader, PropertyChangeListener, Runnable {
 
@@ -212,6 +233,7 @@ public class WebappLoader
      * This class should extend WebappClassLoader, otherwise, a different
      * loader implementation must be used.
      */
+//  该变量是一个的表示加载器类名String类型表示形式。
     private String loaderClass =
         "org.apache.catalina.loader.WebappClassLoader";
 
@@ -763,6 +785,10 @@ public class WebappLoader
     /**
      * Create associated classLoader.
      */
+//当WebappLoader启动的时候，它会使用它的私有方法createClassLoader创建WebappClassLoader的实例
+//也可以不使用WebappClassLoader而用其他的类，
+//但是注意createClassLoader的返回值类型是WebappClassLoader，
+//所以你的类必须继承WebappClassLoader类，否则该方法会抛出异常。
     private WebappClassLoader createClassLoader()
         throws Exception {
 
@@ -839,6 +865,9 @@ public class WebappLoader
     /**
      * Notify our Context that a reload is appropriate.
      */
+//并不是直接调用Context接口中的reload方法，
+//它首先初始化一个内部类WebappContextNotifier的实例，
+//并把它传递给一个线程对象，调用它的start方法。这样重载的提交就由另一个线程完成
     private void notifyContext() {
 
         WebappContextNotifier notifier = new WebappContextNotifier();
@@ -850,6 +879,8 @@ public class WebappLoader
     /**
      * Configure associated class loader permissions.
      */
+//Tomcat使用了安全管理器，setPermissions给类加载器给必要的目录添加访问权限，
+//例如WEB-INF/classes和WEB-INF/lib。如果不使用管理器，该方法马上返回。
     private void setPermissions() {
 
         if (System.getSecurityManager() == null)
@@ -947,7 +978,6 @@ public class WebappLoader
 
         } catch (MalformedURLException e) {
         }
-
     }
 
 
@@ -955,6 +985,10 @@ public class WebappLoader
      * Configure the repositories for our class loader, based on the
      * associated Context.
      */
+//    setRepositories方法来给类加载器添加一个库。
+//    WEB-INF/classes目录传递给加载器addRepository方法，
+//    而WEB-INF/lib传递给加载器的setJarPath方法。
+//    这样，类加载器能能从WEB-INF/classes 目录下面和WEB-INF/lib目录下面部署的类库里加载类。
     private void setRepositories() {
 
         if (!(container instanceof Context))
@@ -975,6 +1009,7 @@ public class WebappLoader
 
         // Setting up the class repository (/WEB-INF/classes), if it exists
 
+//  WEB-INF/classes目录传递给加载器addRepository方法
         String classesPath = "/WEB-INF/classes";
         DirContext classes = null;
 
@@ -1018,8 +1053,9 @@ public class WebappLoader
 
         // Setting up the JAR repository (/WEB-INF/lib), if it exists
 
-        String libPath = "/WEB-INF/lib";
 
+        String libPath = "/WEB-INF/lib";
+//  WEB-INF/lib传递给加载器的setJarPath方法
         classLoader.setJarPath(libPath);
 
         DirContext libDir = null;
@@ -1093,6 +1129,8 @@ public class WebappLoader
      * Set the appropriate context attribute for our class path.  This
      * is required only because Jasper depends on it.
      */
+//    setClassPath方法会给servlet上下文分配
+//    一个String类型属性保存Jasper JSP编译的类路径，该内容先不予讨论。
     private void setClassPath() {
 
         // Validate our current state information
@@ -1326,6 +1364,10 @@ public class WebappLoader
     /**
      * The background thread that checks for session timeouts and shutdown.
      */
+//   WebappLoader支持自动重载，如果WEB-INF/classes或者WEB-INF/lib目录被重新编译过，
+//   在不重启Tomcat的情况下必须自动重新载入这些类。
+//   为了实现这个目的，WebappLoader有一个单独的线程每隔x秒会检查源的时间戳。
+//   x的值由checkInterval变量定义，它的默认值是15，也就是每隔15秒会进行一次检查是否需要自动重载。
     public void run() {
 
         if (debug >= 1)
@@ -1335,6 +1377,7 @@ public class WebappLoader
         while (!threadDone) {
 
             // Wait for our check interval
+//            休眠由checkInterval变量定义的一段时间
             threadSleep();
 
             if (!started)
@@ -1342,6 +1385,7 @@ public class WebappLoader
 
             try {
                 // Perform our modification check
+// 检查是否有类被改变，如果有责调用WebappLoader实例的modified方法，否则继续循环。
                 if (!classLoader.modified())
                     continue;
             } catch (Exception e) {
@@ -1350,6 +1394,7 @@ public class WebappLoader
             }
 
             // Handle a need for reloading
+//如果一个类被修改了，调用私有方法notifyContext来让跟WebappLoader实例相关联的上下文重新载入。
             notifyContext();
             break;
 
@@ -1368,14 +1413,15 @@ public class WebappLoader
      * Private thread class to notify our associated Context that we have
      * recognized the need for a reload.
      */
+//  WebappContextNotifier类的一个实例被传递给一个线程的时候，
+//  该线程的start方法被唤醒，WebappContextNotifier实例的run方法会被执行。
+//  然后，run方法调用Context接口的reload方法。
+//  可以在第12章看到org.apache.catalina.core.StandardContext类是如何实现reload方法的。
     protected class WebappContextNotifier implements Runnable {
-
-
         /**
          * Perform the requested notification.
          */
         public void run() {
-
             ((Context) container).reload();
 
         }

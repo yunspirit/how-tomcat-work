@@ -74,6 +74,14 @@ import java.util.jar.Manifest;
  * @author Remy Maucherat
  * @version $Revision: 1.1 $ $Date: 2002/07/22 19:52:40 $
  */
+//为了提高性能，当一个类被加载的时候会被放到缓存中，
+//这样下次需要加载该类的时候直接从缓存中调用即可。缓存由WebappClassLoader类实例自己管理
+//    --------------------------------------------------------
+//java.lang.ClassLoader维护了一个Vector，
+//可以避免前面加载过的类被当做垃圾回收掉。在这里，缓存被该超类管理。
+//    -------------------------------------------------------------
+//每一个可以被加载的类(放在 WEB-INF/classes目录下的类文件或者 JAR 文件)都被当做一个源。
+//一个源被org.apache.catalina.loader.ResourceEntry类表示。
 public class ResourceEntry {
 
 
@@ -87,6 +95,7 @@ public class ResourceEntry {
     /**
      * Binary content of the resource.
      */
+//    一个ResourceEntry实例保存一个byte类型的数组表示该类、最后修改的数据或者副本等等。
     public byte[] binaryContent = null;
 
 
