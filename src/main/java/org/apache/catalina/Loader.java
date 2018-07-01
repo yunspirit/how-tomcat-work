@@ -98,7 +98,13 @@ import java.beans.PropertyChangeListener;
  * @author Craig R. McClanahan
  * @version $Revision: 1.6 $ $Date: 2002/09/19 22:55:47 $
  */
-
+//一个servlet容器需要一个定制的容器，而不是简单的使用系统的加载器。
+//        如果像前面章节中那样使用系统的加载器来加载servlet和其他需要的类，
+//        这样servlet就可以进入Java虚拟机CLASSPATH环境下面的任何类和类库，
+//        这会带来安全隐患。
+//        Servlet只允许访问WEB-INF/目录及其子目录下面的类以及部署在WEB-INF/lib目录下的类库。
+//        所以一个servlet容器需要一个自己的加载器，该加载器遵守一些特定的规则来加载类。
+//        在Catalina中，加载器使用org.apache.catalina.Loader接口表示。
 public interface Loader {
 
 

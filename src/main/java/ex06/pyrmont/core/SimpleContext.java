@@ -695,7 +695,7 @@ public class SimpleContext implements Context, Pipeline, Lifecycle {
 //
 // --------------------------线程开始   开始事件------------------------------------------
 // 要触发一个事件，SimpleContext需要调用LifecycleSupport的fireLifecycleEvent方法：
-//  注意start方法是如何启动所有子容器以及其相关组件（容易加载器、流水线和映射器）
+//  注意start方法是如何启动所有子容器以及其相关组件（加载器、流水线和映射器）
 //  使用该机制，可以启动容器模型中所有的组件，
 //  你只需要启动最高层的组件即可（在该例子中SimpleContext实例）。
 //  而停止它们的时候只需简单停止相同的组件即可。

@@ -1088,6 +1088,7 @@ public class HttpRequestBase
      *
      * @param create Create a new session if one does not exist
      */
+//    方法重载
     public HttpSession getSession(boolean create) {
         if( System.getSecurityManager() != null ) {
             PrivilegedGetSession dp = new PrivilegedGetSession(create);

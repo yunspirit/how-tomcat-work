@@ -104,6 +104,8 @@ import org.apache.catalina.util.LifecycleSupport;
  * @version $Revision: 1.19 $ $Date: 2002/06/09 02:19:43 $
  */
 
+//在运行的时候，StandardManager将session对象存放在内存中。
+// 但是，当停止的时候，它将Session对象存放到文件中。当它再次启动的时候，重新载入Session对象。
 public class StandardManager
     extends ManagerBase
     implements Lifecycle, PropertyChangeListener, Runnable {

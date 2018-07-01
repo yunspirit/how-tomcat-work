@@ -41,6 +41,7 @@ public final class Bootstrap {
     context.addServletMapping("/Modern", "Modern");
 
     // ------ add logger --------
+//    添加日志系统
     System.setProperty("catalina.base", System.getProperty("user.dir"));
     FileLogger logger = new FileLogger();
     logger.setPrefix("FileLog_");

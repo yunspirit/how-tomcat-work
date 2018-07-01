@@ -116,6 +116,9 @@ import org.apache.catalina.util.StringManager;
  * @version $Revision: 1.31 $ $Date: 2002/07/23 12:49:11 $
  */
 
+//StandardSession类是Session接口的标准是实现。
+//        另外，实现了javax.servlet.http.HttpSession 和org.apache.catalina.Session之外，
+//        它还实现了java.lang.Serializable接口来使得Session对象可序列化。
 class StandardSession
     implements HttpSession, Session, Serializable {
 
@@ -128,6 +131,7 @@ class StandardSession
      *
      * @param manager The manager with which this Session is associated
      */
+//    该类的构造器获得一个管理器实例来强制使得每个Session对象都有一个管理器。
     public StandardSession(Manager manager) {
 
         super();
@@ -138,8 +142,11 @@ class StandardSession
     }
 
 
-    // ----------------------------------------------------- Instance Variables
+    // ----------存放session状态------------------------ Instance Variables
 
+
+
+//    接下来是几个重要的变量在存放Session状态。注意transient使得该关键字不可序列化。
 
     /**
      * The dummy attribute value serialized when a NotSerializableException is
@@ -531,6 +538,7 @@ class StandardSession
      * Return the <code>HttpSession</code> for which this object
      * is the facade.
      */
+//    方法getSession首先会将该实例创建一个StandardSessionFacade对象
     public HttpSession getSession() {
 
         if (facade == null)
@@ -608,6 +616,8 @@ class StandardSession
      * @param notify Should we notify listeners about the demise of
      *  this session?
      */
+//    一个Session对象如果在由maxInactiveInterval变量的时间内没有被进入则被终结。
+//    使用Session接口中定义的expire方法可以终结一个Session对象。
     public void expire(boolean notify) {
 
         // Mark this session as "being expired" if needed

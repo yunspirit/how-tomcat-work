@@ -134,6 +134,7 @@ public interface Session {
     /**
      * Return the session identifier for this session.
      */
+//    一个Session实例在跟管理器相关联的容器有一个唯一的ID。对于该ID有setId和getId方法相关
     public String getId();
 
 
@@ -159,12 +160,15 @@ public interface Session {
      * GMT.  Actions that your application takes, such as getting or setting
      * a value associated with the session, do not affect the access time.
      */
+//    getLastAccessedTime方法由管理器来调用，以确定一个Session对象是否合法
     public long getLastAccessedTime();
 
 
     /**
      * Return the Manager within which this Session is valid.
      */
+// 由于一个Session对象常常被一个管理器持有，
+// 所以接口提供了setManager和getManager方法来关联一个Session对象和一个管理器
     public Manager getManager();
 
 
@@ -227,6 +231,7 @@ public interface Session {
      * Return the <code>HttpSession</code> for which this object
      * is the facade.
      */
+//    使用getSession可以获得一个包装在该外观内的HttpSession对象。
     public HttpSession getSession();
 
 
@@ -235,6 +240,7 @@ public interface Session {
      *
      * @param isValid The new value for the <code>isValid</code> flag
      */
+//    管理器调用setValid方法来重置一个session的合法性。
     public void setValid(boolean isValid);
 
 
@@ -252,6 +258,7 @@ public interface Session {
      * should be called by the context when a request comes in for a particular
      * session, even if the application does not reference it.
      */
+//    每次一个Session被进入的时候，都会调用access方法更新它的最后访问时间
     public void access();
 
 

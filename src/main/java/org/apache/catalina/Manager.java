@@ -88,7 +88,8 @@ import java.io.IOException;
  * @author Craig R. McClanahan
  * @version $Revision: 1.6 $ $Date: 2002/09/19 22:55:47 $
  */
-
+//Catalina通过一个叫管理器的组件来完成session管理工作，该组件由org.apache.catalina.Manager interface接口表示。
+//一个管理器通常跟一个上下文容器相关联，它负责创建、更行以及销毁session对象并能给任何请求组件返回一个合法的session。
 public interface Manager {
 
 

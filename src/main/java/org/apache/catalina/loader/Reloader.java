@@ -66,7 +66,10 @@ package org.apache.catalina.loader;
 
 
 /**
- * Internal interface that <code>ClassLoader</code> implementations may
+ * Internal intert和支持类文件的时间戳。
+ *  * //        要支持类的自动加载功能，
+ *  * //        一个加载器类必须实现org.apache.catalina.loader.Reloader接口。
+ *  * public interface Reloader {face that <code>ClassLoader</code> implementations may
  * optionally implement to support the auto-reload functionality of
  * the classloader associated with the context.
  *
@@ -74,9 +77,11 @@ package org.apache.catalina.loader;
  * @version $Revision: 1.5 $ $Date: 2001/07/22 20:25:10 $
  */
 
-public interface Reloader {
+//Tomcat需要一个自己的加载器的另一个原因是
+//        它需要支持在WEB-INF/classes或者是WEB-INF/lib目录被改变的时候会重新加载。
+//        Tomcat的加载器实现中使用一个单独的线程来检查servle
 
-
+public interface Reloader{
     /**
      * Add a new repository to the set of places this ClassLoader can look for
      * classes to be loaded.

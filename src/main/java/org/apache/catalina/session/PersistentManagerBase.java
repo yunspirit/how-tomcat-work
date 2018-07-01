@@ -90,6 +90,8 @@ import org.apache.catalina.util.LifecycleSupport;
  * @version $Revision: 1.9 $ $Date: 2002/08/28 17:08:58 $
  */
 
+//PersistentManagerBase类作为一个管理器组件将Session对象存放到二级存储器中。
+// 它有两个直接子类：PersistentManager和DistributedManager类
 public abstract class PersistentManagerBase
     extends ManagerBase
     implements Lifecycle, PropertyChangeListener, Runnable {
