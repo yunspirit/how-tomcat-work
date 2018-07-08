@@ -88,7 +88,8 @@ import org.apache.commons.digester.Digester;
  * @author Craig R. McClanahan
  * @version $Revision: 1.13 $ $Date: 2002/06/09 02:19:43 $
  */
-
+//org.apache.catalina.realm包中海提供了其它一些类继承了RealmBase如：JDBCRealm, JNDIRealm, MemoryRealm,和 UserDatabaseRealm。
+//        默认情况下使用的域是MemoryRealm。
 public final class MemoryRealm
     extends RealmBase {
 
