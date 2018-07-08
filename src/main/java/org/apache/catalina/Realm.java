@@ -80,7 +80,12 @@ import java.security.cert.X509Certificate;
  * @author Craig R. McClanahan
  * @version $Revision: 1.4 $ $Date: 2001/07/30 20:04:04 $
  */
+//一个域跟一个上下文容器相联系，一个容器可以只有一个域。可以使用容器的setRealm方法来建立它们之间的联系
 
+//一个域拥有所有的合法用户的密码或者是可以访问它们。
+//        至于它们存放在哪里则取决于域的实现。
+//        在Tomcat的默认实现里，合法用户被存储在tomcat-users.xml文件里。
+//        但是可以使用域的其它实现来访问其它的源，如关系数据库。
 public interface Realm {
 
 

@@ -92,7 +92,9 @@ import org.apache.catalina.util.StringManager;
  */
 
 //在Catalina中，org.apache.catalina.session包中类ManagerBase类提供了常用函数的基本实现
-//    ManagerBase类有两个直接子类：StandardManager和PersistentManagerBase类。
+//    ManagerBase类有两个直接子类：
+// 1、StandardManager
+// 2、PersistentManagerBase类。
 public abstract class ManagerBase implements Manager {
 
 

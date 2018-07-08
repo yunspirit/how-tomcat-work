@@ -79,6 +79,7 @@ import org.apache.catalina.Realm;
  * @version $Revision: 1.4 $ $Date: 2001/10/27 20:29:03 $
  */
 
+//一个GenericPrincipal必须跟一个域相关联
 public class GenericPrincipal implements Principal {
 
 
@@ -179,6 +180,8 @@ public class GenericPrincipal implements Principal {
      *
      * @param role Role to be tested
      */
+//    GenericPrincipal必须拥有一个用户名和一个密码，此外还可选择性的传递一列角色。
+//    可以使用hasRole方法来检查一个principal是否有一个特定的角色，传递的参数为角色的字符串表示形式
     public boolean hasRole(String role) {
 
         if (role == null)

@@ -91,7 +91,7 @@ import org.apache.catalina.util.MD5Encoder;
  * @author Craig R. McClanahan
  * @version $Revision: 1.12 $ $Date: 2002/06/09 02:19:43 $
  */
-
+//一个域的基本上实现是抽象类org.apache.catalina.realm.RealmBase。
 public abstract class RealmBase
     implements Lifecycle, Realm {
 
