@@ -347,10 +347,12 @@ public class WebappLoader
      *
      * @param container The associated Container
      */
+//   有一个单独线程来检查WEB-INF目录下面所有类和JAR文件的时间戳。你需要做的是启动该线程，
+//    将 WebappLoader关联到StandardContext，使用setContainer方法即可。
     public void setContainer(Container container) {
 
         // Deregister from the old Container (if any)
-        if ((this.container != null) && (this.container instanceof Context))
+        if ((this .container != null) && (this.container instanceof Context))
             ((Context) this.container).removePropertyChangeListener(this);
 
         // Process this property change
@@ -359,6 +361,8 @@ public class WebappLoader
         support.firePropertyChange("container", oldContainer, this.container);
 
         // Register with the new Container (if any)
+//        注意最后一个if语句块中，如果容器是一个上下文容器，调用setReloadable方法，
+// 也就是说WebappLoader的reloadable属性跟StandardContext的reloadable属性相同d
         if ((this.container != null) && (this.container instanceof Context)) {
             setReloadable( ((Context) this.container).getReloadable() );
             ((Context) this.container).addPropertyChangeListener(this);
@@ -504,6 +508,10 @@ public class WebappLoader
         // Start or stop our background thread if required
         if (!started)
             return;
+//        如果将reloadable属性设置为true，调用threadStart方法。
+//        如果从true到false，则调用threadStop方法。
+//        threadStart方法启动一个线程持续的检查WEB-INF目录下面的类文件和JAR文件的时间戳。
+//        threadStop方法用于停止该线程。
         if (!oldReloadable && this.reloadable)
             threadStart();
         else if (oldReloadable && !this.reloadable)
@@ -1268,6 +1276,17 @@ public class WebappLoader
      * @exception IllegalStateException if we should not be starting
      *  a background thread now
      */
+
+//    场景------------------
+//    一个上下文容器需要其它组件如加载器和管理器的支持。
+//    这些组件通常需要一个单独的线程来处理后台过程（background processing）
+//    1、例如，加载器通过一个线程检查类文件和JAR文件的时间戳来支持自动重载
+//    2、。管理器需要一个线程来检查它管理的Session对象过期时间。
+//    3、.在Tomcat4中，这些组件都有自己的线程。 为了节省资源，Tomcat使用了一种不同的方式来处理。
+//    所有的后台过程都分享同一个线程。
+//    如果一个组件或者是容器需要定期的来执行操作，它需要做的是将这些代码写入到backgroundProcess方法即可
+//    --------------------------------
+//    。threadStart方法启动一个线程持续的检查WEB-INF目录下面的类文件和JAR文件的时间戳
     private void threadStart() {
 
         // Has the background thread already been started?
@@ -1298,6 +1317,7 @@ public class WebappLoader
      * Stop the background thread that is periodically checking for
      * modified classes.
      */
+//    threadStop方法用于停止该线程。
     private void threadStop() {
 
         if (thread == null)

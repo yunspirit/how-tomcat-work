@@ -355,6 +355,8 @@ public class StandardContext
     /**
      * The reloadable flag for this web application.
      */
+// StandardContext定义了reloadable属性来标识是否支持应用程序的重加载。
+// 当允许重加载的时候，当web.xml或者WEB-INF/classes目录下的文件被改变的时候会重加载。
     private boolean reloadable = false;
 
 
