@@ -75,7 +75,12 @@ import javax.servlet.ServletContext;
  * @author Remy Maucharat
  * @version $Revision: 1.3 $ $Date: 2001/07/22 20:25:08 $
  */
-
+//StandardWrapper调用它价值的Servlet的init方法。
+//该方法需要一个javax.servlet.ServletConfig的参数，而StandardWrapper类自己就实现了ServletConfig接口。
+//所以，理论上StandardWrapper可以将它自己作为参数传递给init方法。
+//   -------------------------------------------------------隐藏大部分参数-------------------------
+//但是StandardWrapper需要对Servlet隐藏他的大多数public方法。
+//        为了实现这一点，StandardWraper将它自己包装的一个StandardWrapperFacade实例中
 public final class StandardWrapperFacade
     implements ServletConfig {
 
@@ -106,6 +111,8 @@ public final class StandardWrapperFacade
     // -------------------------------------------------- ServletConfig Methods
 
 
+//当StandardWrapper对象调用Servlet实例的init方法的时候，它传递的是一个StandardWrapperFacade对象。
+//在Servlet内部调用ServletConfig的getServletName, getInitParameter, 和getInitParameterNames方法只需要调用它们在StandardWrapper的实现就行。
     public String getServletName() {
         return config.getServletName();
     }

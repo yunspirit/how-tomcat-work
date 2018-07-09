@@ -89,7 +89,7 @@ import org.apache.catalina.deploy.LoginConfig;
  * @author Craig R. McClanahan
  * @version $Revision: 1.20 $ $Date: 2002/03/14 20:58:24 $
  */
-
+//FormAuthenticator用于基于表单的验证
 public class FormAuthenticator
     extends AuthenticatorBase {
 

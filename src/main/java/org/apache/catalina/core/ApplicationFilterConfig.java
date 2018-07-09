@@ -85,7 +85,7 @@ import org.apache.catalina.util.Enumerator;
  * @author Craig R. McClanahan
  * @version $Revision: 1.7 $ $Date: 2001/07/22 20:25:08 $
  */
-
+//ApplicationFilterConfig负责管理web应用程序启动的时候创建的过滤器实例。
 final class ApplicationFilterConfig implements FilterConfig {
 
 
@@ -109,6 +109,8 @@ final class ApplicationFilterConfig implements FilterConfig {
      *  instantiating the filter object
      * @exception javax.servlet.ServletException if thrown by the filter's init() method
      */
+//    Context对象表示一个一个web
+//    FilterDef表示一个过滤器定义。
     public ApplicationFilterConfig(Context context, FilterDef filterDef)
         throws ClassCastException, ClassNotFoundException,
                IllegalAccessException, InstantiationException,
@@ -229,6 +231,8 @@ final class ApplicationFilterConfig implements FilterConfig {
      *  instantiating the filter object
      * @exception javax.servlet.ServletException if thrown by the filter's init() method
      */
+// ApplicationFilterConfig的getFilter方法可以返回一个javax.servlet.Filter方法，
+// 该方法加载过滤器类并初始化它。
     Filter getFilter() throws ClassCastException, ClassNotFoundException,
         IllegalAccessException, InstantiationException, ServletException {
 

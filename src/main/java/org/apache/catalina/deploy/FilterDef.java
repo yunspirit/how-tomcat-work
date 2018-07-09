@@ -76,13 +76,14 @@ import java.util.Map;
  * @author Craig R. McClanahan
  * @version $Revision: 1.2 $ $Date: 2001/07/22 20:25:10 $
  */
-
+//org.apache.catalina.deploy.FilterDef表示一个过滤器定义，
+// 就像是在部署文件中定义一个过滤器元素那样
 public final class FilterDef {
 
 
     // ------------------------------------------------------------- Properties
 
-
+//    FilterDef类中的每一个属性都代表一个可以在过滤器中出现的子元素。
     /**
      * The description of this filter.
      */
@@ -158,6 +159,7 @@ public final class FilterDef {
      * The set of initialization parameters for this filter, keyed by
      * parameter name.
      */
+//    该类包括一个Map类型的变量表示一个包含所有初始参数的Map。
     private Map parameters = new HashMap();
 
     public Map getParameterMap() {
@@ -191,6 +193,7 @@ public final class FilterDef {
      * @param name The initialization parameter name
      * @param value The initialization parameter value
      */
+//    方法addInitParameer添加一个name/value对到该Map。
     public void addInitParameter(String name, String value) {
 
         parameters.put(name, value);

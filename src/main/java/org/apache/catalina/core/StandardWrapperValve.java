@@ -30,6 +30,15 @@ import org.apache.catalina.valves.ValveBase;
  * @version $Revision: 1.34 $ $Date: 2002/03/15 19:12:49 $
  */
 
+//1、在StandardWrapper实例的基本阀门管道。
+//2、StandardWrapperValve对象通过调用StandardWrapper的allocate方法获得Servlet实例。
+//3、在获得Servlet实例之后的StandardWrapperValve调用servlet的service方法
+
+//    StandardWrapperValve是StandardWrapper实例上的基本阀门，该阀门做两件事情：
+//            1、提交Servlet的所有相关过滤器
+//            2、调用发送者的service方法
+
+
 final class StandardWrapperValve
     extends ValveBase {
 
@@ -90,6 +99,13 @@ final class StandardWrapperValve
      * @exception java.io.IOException if an input/output error occurred
      * @exception javax.servlet.ServletException if a servlet error occurred
      */
+//    要实现这些内容，下面是StandardWrapperValve在他的invoke方法要实现的：
+//    1、调用StandardWrapper的allocate的方法来获得一个servlet实例
+//    2、调用它的private createFilterChain方法获得过滤链
+//    3、调用过滤器链的doFilter方法。包括调用servlet的service方法
+//    4、释放过滤器链
+//    5、调用包装器的deallocate方法
+//    6、如果Servlet无法使用了，调用包装器的unload方法
     public void invoke(Request request, Response response,
                        ValveContext valveContext)
         throws IOException, ServletException {
@@ -167,7 +183,8 @@ final class StandardWrapperValve
             servlet = null;
         }
 
-        // Create the filter chain for this request
+//Create the filter chain for this request
+//方法createFilterChain创建了一个ApplicationFilterChain实例，并将所有的过滤器添加到上面
         ApplicationFilterChain filterChain =
             createFilterChain(request, servlet);
 

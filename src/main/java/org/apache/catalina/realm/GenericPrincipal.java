@@ -80,6 +80,7 @@ import org.apache.catalina.Realm;
  */
 
 //一个GenericPrincipal必须跟一个域相关联
+//    roles是一个角色数组
 public class GenericPrincipal implements Principal {
 
 

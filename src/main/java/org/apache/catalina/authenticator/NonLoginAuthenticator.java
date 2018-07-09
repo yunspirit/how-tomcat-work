@@ -79,7 +79,8 @@ import org.apache.catalina.deploy.LoginConfig;
  * @author Craig R. McClanahan
  * @version $Revision: 1.3 $ $Date: 2001/07/22 20:09:19 $
  */
-
+//NonLoginAuthenticator用于Tomcat没有指定验证元素的时候。
+//NonLoginAuthenticator类表示只是检查安全限制的验证器，但是不进行用户验证。
 public final class NonLoginAuthenticator
     extends AuthenticatorBase {
 

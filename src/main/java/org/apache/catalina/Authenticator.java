@@ -75,7 +75,8 @@ package org.apache.catalina;
  * @author Craig R. McClanahan
  * @version $Revision: 1.3 $ $Date: 2001/07/22 20:13:30 $
  */
-
+//org.apache.catalina.Authenticator接口用来表示一个验证器。
+//        该方接口并没有方法，只是一个组件的标志器，这样就能使用instanceof来检查一个组件是否为验证器。
 public interface Authenticator {
 
 

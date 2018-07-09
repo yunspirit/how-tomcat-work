@@ -122,7 +122,7 @@ import org.apache.catalina.valves.ValveBase;
  * @version $Revision: 1.33 $ $Date: 2002/08/15 17:42:57 $
  */
 
-
+//仍然是valve
 public abstract class AuthenticatorBase
     extends ValveBase
     implements Authenticator, Lifecycle {
@@ -402,6 +402,7 @@ public abstract class AuthenticatorBase
      * @exception java.io.IOException if an input/output error occurs
      * @exception javax.servlet.ServletException if thrown by a processing element
      */
+//    AuthenticatorBase类的invoke方法调用了抽象方法authenticate，该方法的具体实现由子类完成
     public void invoke(Request request, Response response,
                        ValveContext context)
         throws IOException, ServletException {
@@ -449,6 +450,7 @@ public abstract class AuthenticatorBase
         // Special handling for form-based logins to deal with the case
         // where the login form (and therefore the "j_security_check" URI
         // to which it submits) might be outside the secured area
+
         String contextPath = this.context.getPath();
         String requestURI = hrequest.getDecodedRequestURI();
         if (requestURI.startsWith(contextPath) &&

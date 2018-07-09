@@ -84,7 +84,7 @@ import org.apache.catalina.util.Base64;
  * @author Craig R. McClanahan
  * @version $Revision: 1.12 $ $Date: 2002/03/23 17:52:16 $
  */
-
+//BasicAuthenticator用于基本验证,
 public class BasicAuthenticator
     extends AuthenticatorBase {
 

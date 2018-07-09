@@ -76,7 +76,9 @@ import org.apache.catalina.util.RequestUtil;
  * @author Craig R. McClanahan
  * @version $Revision: 1.6 $ $Date: 2001/07/22 20:25:10 $
  */
-
+//Tomcat一个部署启动的时候，先读取web.xml。如果web.xml包括一个login-confgi元素，Tomcat创建一LoginConfig对象并相应的设置它的属性。
+//        验证阀门调用LoginConfig的getRealmName方法并将域名发送给浏览器显示登录表单。
+//        如果getRealmName名字返回值为null，则发送给浏览器服务器的名字和端口名。
 public final class LoginConfig {
 
 
@@ -121,7 +123,9 @@ public final class LoginConfig {
      * BASIC, DIGEST, FORM, or CLIENT-CERT.
      */
     private String authMethod = null;
-
+//用于验证用户   。一个验证（authentication）的名字必须是下面的之一
+//     ：BASIC, DIGEST, FORM, o或者CLIENT-CERT。
+//    如果用到的是基于表单（form）的验证，该LoginConfig对象还包括登录或者错误页面像对应的URL。
     public String getAuthMethod() {
         return (this.authMethod);
     }
@@ -171,6 +175,7 @@ public final class LoginConfig {
      */
     private String realmName = null;
 
+//    getRealmName方法来获得域名
     public String getRealmName() {
         return (this.realmName);
     }

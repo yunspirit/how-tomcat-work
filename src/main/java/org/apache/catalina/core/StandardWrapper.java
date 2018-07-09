@@ -75,6 +75,8 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.SingleThreadModel;
 import javax.servlet.UnavailableException;
+
+import com.sun.org.apache.xpath.internal.SourceTreeManager;
 import org.apache.catalina.Container;
 import org.apache.catalina.ContainerServlet;
 import org.apache.catalina.Context;
@@ -100,6 +102,20 @@ import org.apache.tomcat.util.log.SystemLogHandler;
  * @version $Revision: 1.40 $ $Date: 2002/08/29 10:37:55 $
  */
 
+//   一个StandardWrapper对象的主要职责是：加载它表示的servlet并分配它的一个实例。
+//        该StandardWrapper不会调用servlet的service方法。这个任务留给StandardWrapperValve对象
+//    ------------------------------------------第一次加载servlet------不调用service方法---------------------------------
+//    在servlet第一次被请求的时候，StandardWrapper加载servlet类。
+//            它是动态的加载servlet，所以需要知道servlet类的完全限定名称。
+//            通过StandardWrapper类的setServletClass方法将servlet的类名传递给StandardWrapper。
+//            另外，使用setName方法也可以传递servlet名。
+//    -----------------------------------------servlet的实例分配问题-----------------------------------------------------
+//    考虑到StandardWrapper负责在StandardWrapperValve请求的时候分配一个servlet实例，它必须考虑一个servlet是否实现了SingleThreadModel接口。
+//            如果一个servlet没有实现SingleThreadModel接口，StandardWrapper加载该servlet一次，对于以后的请求返回相同的实例即可。
+//            StandardWrapper假设servlet的service方法是现场安全的，所以并没有创建servlet的多个实例。
+//            如果需要的话，由程序员自己解决资源同步问题。
+//    ---------------------------------------------servlet线程池---------------------------------------------------------
+//    为了性能起见，StandardWrapper维护了一个STM servlet实例池。 一个包装器还负责准备一个javax.servlet.ServletConfig的实例，这可以在servlet内部完成
 public final class StandardWrapper
     extends ContainerBase
     implements ServletConfig, Wrapper {
@@ -147,6 +163,8 @@ public final class StandardWrapper
     /**
      * The facade associated with this wrapper.
      */
+//    下面几行是StandardWrapperFacade的构造函数，它获得一个StandardWrapper类型的参数。
+//    StandardWrapperFacade类有一个ServletConfig类型的类级变量config
     private StandardWrapperFacade facade =
         new StandardWrapperFacade(this);
 
@@ -187,6 +205,7 @@ public final class StandardWrapper
      * The initialization parameters for this servlet, keyed by
      * parameter name.
      */
+//    在StandardWrapper中，初始化参数被存放在一个名为parameters的HashMap中
     private HashMap parameters = new HashMap();
 
 
@@ -445,6 +464,9 @@ public final class StandardWrapper
      *
      * @param container Proposed parent Container
      */
+//    一个包装器的父容器只能是一个上下文容器。
+//    如果传递的参数不是一个上下文容器，
+//    它的setParent方法会抛出java.lang.IllegalArgumentException。
     public void setParent(Container container) {
 
         if ((container != null) &&
@@ -562,6 +584,9 @@ public final class StandardWrapper
      *
      * @param child Child container to be added
      */
+//    一个包装器表示一个独立Servlet的容器。
+//    这样，包装器就不能再有子容器，因此不可以调用它的addChild方法，如果调用了会得到一个java.langIllegalStateException。
+//    这里是StandardWrapper对addChild方法的实现：
     public void addChild(Container child) {
 
         throw new IllegalStateException
@@ -576,6 +601,7 @@ public final class StandardWrapper
      * @param name Name of this initialization parameter to add
      * @param value Value of this initialization parameter to add
      */
+//    可以调用StandardWrapper类的addInitParameter方法来填充parameters。传递参数的名字和值。
     public void addInitParameter(String name, String value) {
 
         synchronized (parameters) {
@@ -639,6 +665,9 @@ public final class StandardWrapper
               (sm.getString("standardWrapper.unloading", getName()));
 
         // If not SingleThreadedModel, return the same instance every time
+//        ---------------------------------------对于非STMServlet--------------------------------
+//        方法allocate检查该实例是否为null，如果是调用loadServlet方法来加载servlet。
+//        然后增加contAllocated整型并返回该实例。
         if (!singleThreadModel) {
 
             // Load and initialize our instance if necessary
@@ -665,7 +694,10 @@ public final class StandardWrapper
             }
 
         }
-
+//---------------------------------------------STM Servlet----------------
+//        如果StandardWrapper表示的是一个STM servlet，方法allocate尝试返回池中的一个实例，
+//        变量instancePool是一个java.util.Stack类型的STM servlet实例池。
+//        方法allocate负责分配STMservlet实例，前提是实例的数目不超过最大数目，该数目由maxInstances整型定义，默认值是20.
         synchronized (instancePool) {
 
             while (countAllocated >= nInstances) {
@@ -682,6 +714,7 @@ public final class StandardWrapper
                     }
                 } else {
                     try {
+                    //线程池不够的话，wait等待有线程够用
                         instancePool.wait();
                     } catch (InterruptedException e) {
                         ;
@@ -800,6 +833,9 @@ public final class StandardWrapper
      *  an exception
      * @exception javax.servlet.ServletException if some other loading problem occurs
      */
+
+//    StandardWrapper实现了Wrapper接口的load方法，load方法调用loadServlet方法来加载一个servlet类，
+//    并调用该servlet的init方法，传递一个javax.servlet.ServletConfig实例
     public synchronized void load() throws ServletException {
         instance = loadServlet();
     }
@@ -814,11 +850,14 @@ public final class StandardWrapper
     public synchronized Servlet loadServlet() throws ServletException {
 
         // Nothing to do if we already have an instance or an instance pool
+//        方法loadServlet首先检查StandardWrapper是否表示一个STM servlet。如果不是并且该实例不是null（即以前已经加载过），直接返回该实例：
         if (!singleThreadModel && (instance != null))
             return instance;
-
+//        如果该实例是null或者是一个STM servlet，继续该方法的其它部分：-------往下走-----------
+//        首先获得System.out 和System.err输出，接下来以就可以使用javax.servlet.ServletContext 的log方法来记录信息
         PrintStream out = System.out;
         SystemLogHandler.startCapture();
+//        定义了一个javax.servlet.Servlet类型的变量，它表示loadServlet方法加载servlet后返回的实例。
         Servlet servlet = null;
         try {
             // If this "servlet" is really a JSP file, get the right class.
@@ -826,7 +865,9 @@ public final class StandardWrapper
             // case Catalina-specific code in Jasper - it also requires that the
             // servlet path be replaced by the <jsp-file> element content in
             // order to be completely effective
+//  方法loadServlet负责加载servlet类，类名应该被分配给servletClass变量，该方法将该值分配给一个String类型变量actualClass。
             String actualClass = servletClass;
+//  由于Catalina也是一个JSP容器，在请求的是JSP页面的时候，loadServlet必须也能工作，如果是JSP页面，则得到相应的Servlet类。
             if ((actualClass == null) && (jspFile != null)) {
                 Wrapper jspWrapper = (Wrapper)
                     ((Context) getParent()).findChild(Constants.JSP_SERVLET_NAME);
@@ -835,6 +876,9 @@ public final class StandardWrapper
             }
 
             // Complain if no servlet class has been specified
+//            如果JSP页面的Servlet名字找不到，就是用servletclass变量的值。
+//            但是，如果该变量的值没有使用StandardWrapper类中的setServletClass方法设置，
+//            会产生异常，剩余部分不会被执行。
             if (actualClass == null) {
                 unavailable(null);
                 throw new ServletException
@@ -842,23 +886,27 @@ public final class StandardWrapper
             }
 
             // Acquire an instance of the class loader to be used
+//            现在，servlet的名字已经获得了，接下来是loadServlet方法获得加载器。如果找不到加载器，则产生异常并停止执行。
             Loader loader = getLoader();
             if (loader == null) {
                 unavailable(null);
                 throw new ServletException
                     (sm.getString("standardWrapper.missingLoader", getName()));
             }
-
+//            如果找到加载器，loadServlet方法调用它的getClassLoader方法获得一个ClassLoader。
             ClassLoader classLoader = loader.getClassLoader();
 
             // Special case class loader for a container provided servlet
+//            如果该Servlet是一个特殊Servlet，isContainerProvidedServlet方法返回true值。
+//            classLoader会获得另一个ClassLoader的实例，这样就可以访问Catalina的内部了。
             if (isContainerProvidedServlet(actualClass)) {
                 classLoader = this.getClass().getClassLoader();
                 log(sm.getString
                       ("standardWrapper.containerServlet", getName()));
             }
 
-            // Load the specified servlet class from the appropriate class loader
+//             Load the specified servlet class from the appropriate class loader
+//             有了类加载器和待加载的Servlet名字，就可以使用loadServlet方法来加载类了。
             Class classClass = null;
             try {
                 if (classLoader != null) {
@@ -897,13 +945,16 @@ public final class StandardWrapper
 
             // Check if loading the servlet in this web application should be
             // allowed
+//            loadServlet方法在初始化Servlet之前，它使用isServletAllowed方法来检查该Servlet是否可以访问。
             if (!isServletAllowed(servlet)) {
                 throw new SecurityException
                     (sm.getString("standardWrapper.privilegedServlet",
                                   actualClass));
             }
-
-            // Special handling for ContainerServlet instances
+//            如果通过了安全性检查，接下来检查该Servlet是否是一个ContainerServlet。
+//            ContainerServlet是实现了org.apache.catalina.ContainerServlet接口的Servlet，它可以访问Catalina的内部函数。
+//            如果该Servlet是ContainerServlet，loadServlet方法调用ContainerServlet的setWrapper方法，传递该StandardWrapper实例。
+//            Special handling for ContainerServlet instances
             if ((servlet instanceof ContainerServlet) &&
                 isContainerProvidedServlet(actualClass)) {
 System.out.println("calling setWrapper");                  
@@ -913,9 +964,14 @@ System.out.println("after calling setWrapper");
 
 
             // Call the initialization method of this servlet
+//            接下来loadServlet方法触发BEFORE_INIT_EVENT事件，并调用发送者的init方法。
             try {
                 instanceSupport.fireInstanceEvent(InstanceEvent.BEFORE_INIT_EVENT,
                                                   servlet);
+//                注意该方法传递一个façade变量，改变量是一个javax.servlet.ServletConfig对象
+//                -------------------------init------------------------
+//                StandardWrapper的loadServlet方法在加载了loaded方法之后调用的发送者的init方法 。
+//                init方法传递一个javax.servlet.ServletConfig实例，你可能想知道一个StandardWrapper对象如何获得ServletConfig对象。
                 servlet.init(facade);
                 // Invoke jspInit on JSP pages
                 if ((loadOnStartup > 0) && (jspFile != null)) {
@@ -926,6 +982,7 @@ System.out.println("after calling setWrapper");
                     req.setQueryString("jsp_precompile=true");
                     servlet.service(req, res);
                 }
+//                loadServlet方法触发AFTER_INIT_EVENT事件
                 instanceSupport.fireInstanceEvent(InstanceEvent.AFTER_INIT_EVENT,
                                                   servlet);
             } catch (UnavailableException f) {
@@ -949,6 +1006,7 @@ System.out.println("after calling setWrapper");
             }
 
             // Register our newly initialized instance
+//            如果该StandardWrapper对象表示的是一个STM Servlet，将该实例添加到实例池中，因此，如果实例池如果为null，首先需要创建它。
             singleThreadModel = servlet instanceof SingleThreadModel;
             if (singleThreadModel) {
                 if (instancePool == null)
@@ -956,6 +1014,7 @@ System.out.println("after calling setWrapper");
             }
             fireContainerEvent("load", this);
         } finally {
+//            在finally块中，loadservlet方法会停止捕获System.out和System.err，并将加载过程中信息使用该容器的log方法记录到日志系统中。
             String log = SystemLogHandler.stopCapture();
             if (log != null && log.length() > 0) {
                 if (getServletContext() != null) {
@@ -1170,6 +1229,7 @@ System.out.println("after calling setWrapper");
      *
      * @param name Name of the initialization parameter to retrieve
      */
+//    方法findInitParameter的参数为参数名，并调用parameters HashMap的get方法。
     public String getInitParameter(String name) {
 
         return (findInitParameter(name));
@@ -1181,6 +1241,7 @@ System.out.println("after calling setWrapper");
      * Return the set of initialization parameter names defined for this
      * servlet.  If none are defined, an empty Enumeration is returned.
      */
+//    该方法返回所有初始化参数名字的枚举（Enumeration）
     public Enumeration getInitParameterNames() {
 
         synchronized (parameters) {
@@ -1193,6 +1254,9 @@ System.out.println("after calling setWrapper");
     /**
      * Return the servlet context with which this servlet is associated.
      */
+//    一个StandardWrapper实例必须是一个StandardContext容器的子容器。
+//    也就是说，StandardWrapper的父容器时StandardContext。
+//    可以使用StandardContext 对象的getServletContext来获得ServletContext对象。
     public ServletContext getServletContext() {
 
         if (parent == null)
@@ -1208,6 +1272,7 @@ System.out.println("after calling setWrapper");
     /**
      * Return the name of this servlet.
      */
+//    它简单的调用StandardWrapper 的父类ContainerBase类的getName方法，该方法如下在ContainerBase中如下实现：
     public String getServletName() {
 
         return (getName());

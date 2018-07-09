@@ -89,7 +89,7 @@ import org.apache.catalina.util.MD5Encoder;
  * @author Remy Maucherat
  * @version $Revision: 1.10 $ $Date: 2001/10/19 16:23:57 $
  */
-
+//DigestAuthentication用于摘要（digest）验证
 public class DigestAuthenticator
     extends AuthenticatorBase {
 

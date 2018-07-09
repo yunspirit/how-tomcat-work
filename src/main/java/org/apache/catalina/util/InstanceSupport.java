@@ -81,7 +81,7 @@ import org.apache.catalina.Wrapper;
  * @author Craig R. McClanahan
  * @version $Id: InstanceSupport.java,v 1.5 2001/10/11 23:30:58 craigmcc Exp $
  */
-
+//和LifeCycleSupport一样  处理lifecycle用的
 public final class InstanceSupport {
 
 

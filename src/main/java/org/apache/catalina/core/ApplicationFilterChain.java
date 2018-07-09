@@ -160,6 +160,7 @@ final class ApplicationFilterChain implements FilterChain {
      * @exception java.io.IOException if an input/output error occurs
      * @exception javax.servlet.ServletException if a servlet exception occurs
      */
+//  ApplicationFilterChain类的doFilter的调用该链中第一个过滤器的doFilter方法
     public void doFilter(ServletRequest request, ServletResponse response)
         throws IOException, ServletException {
 
@@ -208,6 +209,7 @@ final class ApplicationFilterChain implements FilterChain {
                 filter = filterConfig.getFilter();
                 support.fireInstanceEvent(InstanceEvent.BEFORE_FILTER_EVENT,
                                           filter, request, response);
+//                ApplicationFilterChain的doFilter方法，并将它自己作为第三个参数传递给它。
                 filter.doFilter(request, response, this);
                 support.fireInstanceEvent(InstanceEvent.AFTER_FILTER_EVENT,
                                           filter, request, response);

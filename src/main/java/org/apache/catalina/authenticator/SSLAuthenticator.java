@@ -85,7 +85,7 @@ import org.apache.catalina.deploy.LoginConfig;
  * @author Craig R. McClanahan
  * @version $Revision: 1.13 $ $Date: 2002/09/23 00:25:10 $
  */
-
+//SSLAuthenticator用于SSL验证
 public class SSLAuthenticator
     extends AuthenticatorBase {
 
