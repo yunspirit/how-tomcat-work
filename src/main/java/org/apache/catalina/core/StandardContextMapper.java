@@ -133,6 +133,7 @@ public final class StandardContextMapper
      * @exception IllegalArgumentException if this Container is not
      *  acceptable to this Mapper
      */
+//    StandardContextMapper只能跟上下文相关联，使用的方法是setCOntainer
     public void setContainer(Container container) {
 
         if (!(container instanceof StandardContext))
@@ -179,6 +180,8 @@ public final class StandardContextMapper
      * @exception IllegalArgumentException if the relative portion of the
      *  path cannot be URL decoded
      */
+// 在StandardContextMapper中map方法返回一个包装器来处理请求。
+// 如果找不到合适的包装器，方法返回null。
     public Container map(Request request, boolean update) {
 
 
@@ -189,12 +192,13 @@ public final class StandardContextMapper
             return (request.getWrapper());
 
         // Identify the context-relative URI to be mapped
+//  StandardContextMapper的map方法首先识别上下文的相关URL映射
         String contextPath =
             ((HttpServletRequest) request.getRequest()).getContextPath();
         String requestURI = ((HttpRequest) request).getDecodedRequestURI();
         String relativeURI = requestURI.substring(contextPath.length());
 
-
+//        然后通过匹配方法尝试获得一个包装器
         if (debug >= 1)
             context.log("Mapping contextPath='" + contextPath +
                         "' with requestURI='" + requestURI +

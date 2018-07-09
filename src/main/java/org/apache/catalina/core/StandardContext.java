@@ -131,6 +131,17 @@ import org.apache.tomcat.util.log.SystemLogHandler;
  * @version $Revision: 1.112 $ $Date: 2002/09/09 14:39:37 $
  */
 
+//StandardContext的配置过程做了以下事情：
+//        1、准备读取和解析%CATALINA_HOME%/conf 目录下面的web.xml，
+//        2、部署所有应用程序，确保StandardContext实例可以处理应用级别的web.xml。
+//
+//        3、另外，配置需要添加一个验证器阀门和证书阀门（authenticator valve and a certificate valve）
+//-----------------------生命周期-----------------------------
+//    StandardContext使用一个事件监听器来作为它的配置器。
+//        1、当StandardContext实例的start方法被调用的时候，首先触发一个生命周期事件。
+//        2、  该事件唤醒一个监听器来配置该StandardContext实例。
+//        3、  配置成功后，该监听器将configured属性设置为true。
+//        4、  否则，StandardContext对象拒绝启动，这样就不能对HTTP请求进行服务了。
 public class StandardContext
     extends ContainerBase
     implements Context {
@@ -145,6 +156,9 @@ public class StandardContext
     public StandardContext() {
 
         super();
+//      最重要的事情是在StandardContext的流水线上添加了一个类型为
+//      org.apache.catalina.core.StandardContextValve的基本阀门，
+//      该阀门用于裁判连接器获得HTTP请求。
         pipeline.setBasic(new StandardContextValve());
         namingResources.setContainer(this);
 
@@ -178,6 +192,7 @@ public class StandardContext
     /**
      * The application available flag for this Context.
      */
+//    一个StandardContext对象可能启动失败，这时候属性available被设置为false
     private boolean available = false;
 
 
@@ -2350,10 +2365,15 @@ public class StandardContext
      * @exception javax.servlet.ServletException if a ServletException was thrown
      *  while processing this request
      */
+//  StandardContext's方法由相关联的连接器调用，
+//  如果该上下文是一个主机（host）的子容器，有该主机的invoke方法调用
+//  1、StandardContext的invoke方法首先检查是否正在重加载该应用程序，是的话，等待知道加载完毕
+//  2、然后调用它的父类ContainerBase的invoke方法
     public void invoke(Request request, Response response)
         throws IOException, ServletException {
 
-        // Wait if we are reloading
+        // Wait if we are reloading、
+//     方法getPaused获得属性paused的值，当应用程序正在加载的时候该属性为ture。
         while (getPaused()) {
             try {
                 Thread.sleep(1000);
@@ -2363,6 +2383,8 @@ public class StandardContext
         }
 
         // Normal request processing
+//      standardContext并没有提供invoke方法的实现，因此它会执行ContainerBase的invoke方法。
+//      检查应用程序加载的任务在StandardContextValve类的invoke方法中完成。
         if (swallowOutput) {
             try {
                 SystemLogHandler.startCapture();
@@ -3338,6 +3360,15 @@ public class StandardContext
      *
      * @exception org.apache.catalina.LifecycleException if a startup error occurs
      */
+//  1、Start方法初始化StandardContext对象并让生命周期监听器配置该StandardContext实例
+//  2、如果配置成功，生命周期监听器会将configured属性设置为true
+//---------------------------------------------------------------
+//  3、最后start方法，将available属性设置为true或者false
+//  4、true的话表示该StandardContext属性配置完毕并且所有相关子容器和组件已经成功启动，
+//     这样就能对HTTP请求进行服务了，如果是false则表示出现了错误。
+//----------------------------------------------------------------
+//  5、在start方法的最后，它检查StandardContext对象的configured属性，
+//  如果该值为true，则启动该StandardContext成，否则调用stop方法停止所有已经启动的组件。
     public synchronized void start() throws LifecycleException {
         if (started)
             throw new LifecycleException
@@ -3427,7 +3458,7 @@ public class StandardContext
         if (ok) {
 
             try {
-
+//StandardContext在start方法中调用它的addDefaultMapper方法，传递一个mapperClass变量。
                 addDefaultMapper(this.mapperClass);
                 started = true;
 

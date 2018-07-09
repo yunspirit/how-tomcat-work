@@ -168,6 +168,10 @@ final class StandardContextValve
         // Select the Wrapper to be used for this Request
         Wrapper wrapper = null;
         try {
+//            StandardContextValve使用上下文容器的map来查找合适的包装器。一旦它得
+//            到一个合适的包装器，调用该包装器的invoke方法。
+//    Tomcat 5删除了Mapper接口及其相关类。
+//    实际上StandardContextValve的invoke方法就能得到请求的合适包装器。
             wrapper = (Wrapper) context.map(request, true);
         } catch (IllegalArgumentException e) {
             badRequest(requestURI, 
