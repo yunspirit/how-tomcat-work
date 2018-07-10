@@ -79,6 +79,10 @@ package org.apache.catalina;
  * @version $Revision: 1.7 $ $Date: 2001/11/06 22:33:46 $
  */
 
+//服务器还使用了另外一个组件，服务，它用来持有组件，例如容器或者一个多个的连接器。
+//    Service接口用于表示服务
+//            一个服务可以可以有一个容器和多个连接器
+//            你可以添加多个连接器 ，并将它们跟容器相关联
 public interface Service {
 
 

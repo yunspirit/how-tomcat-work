@@ -91,6 +91,16 @@ import org.apache.catalina.deploy.NamingResources;
  * @version $Revision: 1.10 $ $Date: 2002/03/06 06:49:10 $
  */
 
+//org.apache.catalina.Server接口表示整个Catalina Servlet容器以及其它组件。
+//        一个服务器相当有用，因为它提供了一种优雅的机制来启动和停止整个系统。
+//        不必再单独的启动连接器和容器了。
+//    --------------------工作过程-----
+//   1、org.apache.catalina.Server接口表示整个Catalina Servlet容器以及其它组件。
+//     一个服务器相当有用，因为它提供了一种优雅的机制来启动和停止整个系统。
+//     不必再单独的启动连接器和容器了。
+//   2、无限期的等待关闭命令
+//   3、如果你想要关闭系统，发送一个关闭命令道指定端口即可。
+//            当服务器收到正确的关闭指令后，它停止所有组件的服务。
 public interface Server {
 
 
@@ -123,6 +133,7 @@ public interface Server {
     /**
      * Return the port number we listen to for shutdown commands.
      */
+//  属性port则是服务器等待关闭命令的端口
     public int getPort();
 
 
@@ -137,6 +148,7 @@ public interface Server {
     /**
      * Return the shutdown command string we are waiting for.
      */
+//    属性shutdown用来持有一个停止服务的指令。
     public String getShutdown();
 
 
@@ -156,6 +168,7 @@ public interface Server {
      *
      * @param service The Service to be added
      */
+//    可以调用服务器的addService方法将服务添加到服务
     public void addService(Service service);
 
 
@@ -171,6 +184,7 @@ public interface Server {
      *
      * @param name Name of the Service to be returned
      */
+//   findServices返回所有服务器中所有的服务
     public Service findService(String name);
 
 
@@ -186,6 +200,7 @@ public interface Server {
      *
      * @param service The Service to be removed
      */
+//   使用removeService方法将服务删除
     public void removeService(Service service);
 
     /**
@@ -194,6 +209,7 @@ public interface Server {
      *
      * @exception org.apache.catalina.LifecycleException If this server was already initialized.
      */
+//    Initialize方法包括在启动之前需要执行的代码。
     public void initialize()
     throws LifecycleException;
 }

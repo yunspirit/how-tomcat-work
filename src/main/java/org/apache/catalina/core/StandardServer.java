@@ -133,7 +133,13 @@ import org.apache.catalina.util.StringManager;
  * @author Craig R. McClanahan
  * @version $Revision: 1.32 $ $Date: 2002/09/11 14:19:33 $
  */
+//StandardServer类提供了addService、removeService、findServices方法的实现。
+//        另外还有四个跟生命周期相关的方法：initialize 、tart 、stop以及await。
 
+//----------------------流程----------------
+//        1、跟其他组件相似，initialize初始化和start启动一个组件。然后可以使用await方法和stop方法
+////        2、Await方法在收到端口8085（或其他端口）关闭指令之前会一直等待。
+////        3、当await方法返回的时候，调用stop方法停止所有字组件
 public final class StandardServer
     implements Lifecycle, Server {
 
@@ -499,6 +505,11 @@ public final class StandardServer
     /**
      * Wait until a proper shutdown command is received, then return.
      */
+//    Await负责整个Tomcat部署的停止机制
+//    ----------------过程--------------
+//    1、方法await在8085端口创建一个ServerSocket对象，在while循环调用它的accept方法。
+//    2、Accept方法仅仅接受8085端口的信息。它将接受到的信息跟shutdown命令进行匹配，
+//    3、如果匹配的话跳出循环关闭SocketServer，如果不匹配继续while循环等待另一个命令。
     public void await() {
 
         // Set up a server socket to wait on
@@ -2167,6 +2178,9 @@ public final class StandardServer
      * @exception org.apache.catalina.LifecycleException if this component detects a fatal error
      *  that prevents this component from being used
      */
+//    可以使用start方法来启动一个服务器，
+//    StandardServer的start方法的实现将会启动所有服务及其相关组件，
+//    -----------------------用来启动连接器和容器---------
     public void start() throws LifecycleException {
 
         // Validate and update our current component state
@@ -2177,6 +2191,7 @@ public final class StandardServer
         lifecycle.fireLifecycleEvent(BEFORE_START_EVENT, null);
 
         lifecycle.fireLifecycleEvent(START_EVENT, null);
+//        该方法使用了一个started布尔变量来避免一个服务器被启动两次。Stop方法会重置该变量的值。
         started = true;
 
         // Start our defined Services
@@ -2202,6 +2217,7 @@ public final class StandardServer
      * @exception org.apache.catalina.LifecycleException if this component detects a fatal error
      *  that needs to be reported
      */
+//    Stop方法用于停止一个服务器
     public void stop() throws LifecycleException {
 
         // Validate and update our current component state
@@ -2230,11 +2246,13 @@ public final class StandardServer
      * Invoke a pre-startup initialization. This is used to allow connectors
      * to bind to restricted ports under Unix operating environments.
      */
+//    Initialize方法用于初始化要添加到服务器实例上的服务
     public void initialize()
     throws LifecycleException {
         if (initialized)
             throw new LifecycleException (
                 sm.getString("standardServer.initialize.initialized"));
+//        initialized的变量来避免多次启动该服务器
         initialized = true;
 
         // Initialize our defined Services
