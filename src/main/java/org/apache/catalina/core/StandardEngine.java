@@ -291,6 +291,8 @@ public class StandardEngine
      *
      * @param child Child container to be added
      */
+//    在Container容器的顶层，StandardEngine可以有子容器，它的子容器必须是主机（host）。
+//    如果你尝试给它添加一个非主机容器，会产生异常。这里是StandardEngine类的addChile方法
     public void addChild(Container child) {
 
         if (!(child instanceof Host))
@@ -319,6 +321,7 @@ public class StandardEngine
      *
      * @param container Proposed parent Container
      */
+//    由于位于容器的顶层，所以引擎不能有父容器，当你尝试给引擎设置父容器的时候会产生异常
     public void setParent(Container container) {
 
         throw new IllegalArgumentException

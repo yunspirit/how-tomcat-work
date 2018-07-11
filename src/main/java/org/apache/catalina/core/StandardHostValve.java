@@ -90,6 +90,8 @@ import org.apache.catalina.valves.ValveBase;
  * @version $Revision: 1.6 $ $Date: 2002/01/04 16:33:40 $
  */
 
+//  1、org.apache.catalina.core.StandardHostValve类是StandardHost的基本阀门类型。
+//  2、当有HTTP请求的时候会调用它的invoke方法
 final class StandardHostValve
     extends ValveBase {
 
@@ -151,6 +153,7 @@ final class StandardHostValve
 
         // Select the Context to be used for this Request
         StandardHost host = (StandardHost) getContainer();
+//  StandardHostValve的invoke方法调用StandardHost类的map方法获得一个合适的上下文容器来处理请求
         Context context = (Context) host.map(request, true);
         if (context == null) {
             ((HttpServletResponse) response.getResponse()).sendError

@@ -167,7 +167,8 @@ final class StandardEngineValve
                               request.getRequest().getServerName()));
             return;
         }
-
+//        在验证了请求对象和响应对象之后，invoke方法获得一个Host实例来处理请求。
+//        它得到主机的方法是调用引擎的map方法。一旦获得了一个主机，它的invoke方法将会被调用。
         // Ask this Host to process this request
         host.invoke(request, response);
 

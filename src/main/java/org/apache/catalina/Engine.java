@@ -89,7 +89,8 @@ package org.apache.catalina;
  * @author Craig R. McClanahan
  * @version $Revision: 1.9 $ $Date: 2002/09/09 23:39:03 $
  */
-
+//1、引擎表示整个Catalina 的Servlet引擎。如果使用的话，它位于容器等级的最高层。
+//2、在一个Tomcat部署中，默认的容器是引擎。在该部署中，引擎只有一个主机，默认主机
 public interface Engine extends Container {
 
 

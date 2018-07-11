@@ -174,6 +174,7 @@ public class StandardHostMapper
      * @param request Request being processed
      * @param update Update the Request to reflect the mapping selection?
      */
+//    map方法仅仅是简单的调用了Host的map方法。
     public Container map(Request request, boolean update) {
         // Has this request already been mapped?
         if (update && (request.getContext() != null))

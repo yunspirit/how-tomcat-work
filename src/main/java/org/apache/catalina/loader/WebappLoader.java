@@ -510,6 +510,7 @@ public class WebappLoader
             return;
 //        如果将reloadable属性设置为true，调用threadStart方法。
 //        如果从true到false，则调用threadStop方法。
+//  -----------------------------------------------------------------------------------
 //        threadStart方法启动一个线程持续的检查WEB-INF目录下面的类文件和JAR文件的时间戳。
 //        threadStop方法用于停止该线程。
         if (!oldReloadable && this.reloadable)
@@ -1285,8 +1286,8 @@ public class WebappLoader
 //    3、.在Tomcat4中，这些组件都有自己的线程。 为了节省资源，Tomcat使用了一种不同的方式来处理。
 //    所有的后台过程都分享同一个线程。
 //    如果一个组件或者是容器需要定期的来执行操作，它需要做的是将这些代码写入到backgroundProcess方法即可
-//    --------------------------------
-//    。threadStart方法启动一个线程持续的检查WEB-INF目录下面的类文件和JAR文件的时间戳
+//------------------------------------------------------------------------------------------
+//    threadStart方法启动一个线程持续的检查WEB-INF目录下面的类文件和JAR文件的时间戳
     private void threadStart() {
 
         // Has the background thread already been started?

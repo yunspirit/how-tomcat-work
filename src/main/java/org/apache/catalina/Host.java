@@ -88,7 +88,14 @@ package org.apache.catalina;
  * @author Craig R. McClanahan
  * @version $Revision: 1.9 $ $Date: 2002/09/09 23:39:03 $
  */
+//  1、如果需要在一个Tomcat部署中部署多个上下文，需要使用一个主机。
+//  2、理论上，当只有一个上下文容器的时候不需要主机
+//  3、最终要的方法是用合适的上下文来处理请求的map方法，该方法的实现可以在StandardHost类中找到。
 
+//    ------------------------------P190 为什么host是必须的-------------------
+//    上下文使用ContextConfig来配置
+//    ContextConfig需要应用文件web.xml的位置，它在它的applicationConfig方法中尝试打开该文件
+//    在applicationContext中的public URL getResource中有Host必须使用
 public interface Host extends Container {
 
 

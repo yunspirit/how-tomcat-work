@@ -98,6 +98,7 @@ public class StandardHost
     /**
      * Create a new StandardHost component with the default basic Valve.
      */
+//StandardHost类的构造函数在它的流水线中添加一个基本阀门。
     public StandardHost() {
 
         super();
@@ -600,6 +601,7 @@ public class StandardHost
      *
      * @param uri Request URI to be mapped
      */
+//    StandardHostValve的invoke方法调用StandardHost类的map方法获得一个合适的上下文容器来处理请求
     public Context map(String uri) {
 
         if (debug > 0)
@@ -706,6 +708,7 @@ public class StandardHost
      * @exception org.apache.catalina.LifecycleException if this component detects a fatal error
      *  that prevents it from being started
      */
+//    StandardHost上面添加两个阀门：ErrorReportValve 和 ErrorDispatcherValve。
     public synchronized void start() throws LifecycleException {
         // Set error report valve
         if ((errorReportValveClass != null)
@@ -723,7 +726,7 @@ public class StandardHost
 
         // Set dispatcher valve
         addValve(new ErrorDispatcherValve());
-
+//   StandardHost类的start方法在它的最后调用super.start()，这样保证了创建一个默认的映射器。
         super.start();
 
     }

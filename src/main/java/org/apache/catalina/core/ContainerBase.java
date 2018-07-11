@@ -988,6 +988,9 @@ public abstract class ContainerBase
      * @exception javax.servlet.ServletException if a ServletException was thrown
      *  while processing this request
      */
+//   1、对于每一个请求，都会调用主机的invoke方法。由于StanardHost类并没有实现invoke方法，
+//         所以会调用它的父类ContainerBase类的invoke方法。
+//   2、该invoke方法会转而调用StandardHost 的基本阀门StandardHostValve的invoke方
     public void invoke(Request request, Response response)
         throws IOException, ServletException {
         pipeline.invoke(request, response);
