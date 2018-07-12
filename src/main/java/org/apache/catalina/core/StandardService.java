@@ -87,7 +87,10 @@ import org.apache.catalina.util.StringManager;
  * @author Craig R. McClanahan
  * @version $Revision: 1.11 $ $Date: 2002/06/09 02:19:42 $
  */
-
+//一个StandardService实例包括两种组件：一个容器和多个连接器。
+//  多个连接器可以使得Tomcat能服务于多个协议。
+//  1、一个协议用处处理HTTP请求
+//  2、另一个用于处理HTTPS请求。
 public final class StandardService
     implements Lifecycle, Service {
 
@@ -98,12 +101,14 @@ public final class StandardService
     /**
      * The set of Connectors associated with this Service.
      */
+//    用connectors数组来持有所有的连接器
     private Connector connectors[] = new Connector[0];
 
 
     /**
      * The Container associated with this Service.
      */
+//    container变量来持有容器实例
     private Container container = null;
 
 
@@ -181,6 +186,7 @@ public final class StandardService
      *
      * @param container The new Container
      */
+//    要将一个容器跟一个服务相关联，可以使用它的setContainer方法
     public void setContainer(Container container) {
 
         Container oldContainer = this.container;
@@ -303,6 +309,8 @@ public final class StandardService
      *
      * @param connector The Connector to be added
      */
+//    1、要与服务相关联的容器传递给该每个连接器，这样来建立容器和每个连接器的关系。
+//    2、要给一个服务添加连接器，可以使用addConnector方法
     public void addConnector(Connector connector) {
 
         synchronized (connectors) {
@@ -473,6 +481,7 @@ public final class StandardService
      * @exception org.apache.catalina.LifecycleException if this component detects a fatal error
      *  that prevents this component from being used
      */
+//    Lifecycle接口，所以调用它的start方法能启动所有的连接器和容器。
     public void start() throws LifecycleException {
 
         // Validate and update our current component state
@@ -521,6 +530,7 @@ public final class StandardService
      * @exception org.apache.catalina.LifecycleException if this component detects a fatal error
      *  that needs to be reported
      */
+//    Stop方法关闭所有关联连接器和容器
     public void stop() throws LifecycleException {
 
         // Validate and update our current component state
@@ -565,6 +575,7 @@ public final class StandardService
      * Invoke a pre-startup initialization. This is used to allow connectors
      * to bind to restricted ports under Unix operating environments.
      */
+//    StandardService类的initialize方法初始化所有的添加到该服务的连接器。
     public void initialize()
     throws LifecycleException {
         if (initialized)

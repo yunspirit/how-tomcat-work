@@ -121,7 +121,16 @@ import org.xml.sax.SAXParseException;
  * @author Craig R. McClanahan
  * @version $Revision: 1.66 $ $Date: 2002/06/23 20:35:30 $
  */
+//StandardContext必须有一个监听器，
+// 该监听器用于配置StandardContext对象并将StandardContext的configured变量设置为true。
 
+//    不像简单的SimpleContextConfig类，ContextConfig做了很多有用的工作。
+//    1、ContextConfig实例给StandardContext的流水线安装一个验证阀门。它还给流水线添加一个证书阀门。
+//    2、读并解析默认的web.xml文件，并将其中的XML元素转换为Java对象。
+//   --------------------------------默认的web.xml文档在CATALINE_HOME下面的conf目录下面。----------
+//          它定义并映射了默认的Servlet，并映射MIME类型的文件扩展，定义默认Session失效时间，欢迎文件列表
+//      3、ContextConfig为每一个Servlet元素创建了一个StandardWrapper实例。
+//              因此，在本章的应用程序中可以看到配置是很简单的。不需要自己在完成包装器初始化任务。
 public final class ContextConfig
     implements LifecycleListener {
 
@@ -209,6 +218,8 @@ public final class ContextConfig
      *
      * @param event The lifecycle event that has occurred
      */
+//    ContextConfig回应两个事件START_EVENT 和STOP_EVENT。
+//    lifecycleEvent方法在StandardContext每次触发事件的时候都会被调用
     public void lifecycleEvent(LifecycleEvent event) {
 
         // Identify the context we are associated with
@@ -239,6 +250,8 @@ public final class ContextConfig
     /**
      * Process the application configuration file, if it exists.
      */
+//    applicationConfig方法defaultConfig方法相似，除了处理应用程序部署文件的地方。
+//    一个应用的部署文件在该应用目录下的WEB-INF目录下面
     private void applicationConfig() {
 
         // Open the application web.xml file, if it exists
@@ -491,6 +504,7 @@ public final class ContextConfig
         url = ContextConfig.class.getResource(Constants.WebDtdResourcePath_23);
         webDigester.register(Constants.WebDtdPublicId_23,
                              url.toString());
+//        调用addRuleSet的时候传递一个org.apache.catalina.startup.WebRuleSet
         webDigester.addRuleSet(new WebRuleSet());
         return (webDigester);
 
@@ -500,9 +514,13 @@ public final class ContextConfig
     /**
      * Process the default configuration file, if it exists.
      */
+//    方法defaultConfig读取并解析默认的%CATALINA_HOME%/conf目录下面的web.xml
     private void defaultConfig() {
 
         // Open the default web.xml file, if it exists
+//        defaultConfig方法首先传教一个File对象指向默认的web.xml。
+//        DefaultWebXML的值可以在org.apache.catalina.startup.Constants中找到
+//        public static final String DefaultWebXml = "conf/web.xml";
         File file = new File(Constants.DefaultWebXml);
         if (!file.isAbsolute())
             file = new File(System.getProperty("catalina.base"),
@@ -521,6 +539,7 @@ public final class ContextConfig
         }
 
         // Process the default web.xml file
+//        然后方法defaultConfig处理web.xml文件。它对webDigester对象枷锁，然后解析该文件。
         synchronized (webDigester) {
             try {
                 InputSource is =
@@ -602,6 +621,7 @@ public final class ContextConfig
     /**
      * Process a "start" event for this Context.
      */
+//    它内部的start方法调用了defaultConfig 和 applicationConfig方法
     private synchronized void start() {
 
         if (debug > 0)

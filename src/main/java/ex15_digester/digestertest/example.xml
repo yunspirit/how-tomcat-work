@@ -1,0 +1,19 @@
+
+---digester解析example元素
+
+<!--第一次遇到employee开始元素，检查是否已经有存在的规则模式employee。-->
+<!--1、如果有，Digester调用Rule对象的begin方法，从begin方法开始添加第一个模式。-->
+<!--2、 然后检查office元素，所以Digester对象检查是否存在规则模式为employee/office。如果有，，调用Rule对象的begin方法、 -->
+<!--3、 接下来检查模式employee/office/address，如果找到了规则，则调用begin方法 -->
+<!--4、 接下来Digester遇到了address结束符，调用对应规则的end方法。-->
+        <!--5、 解析来遇到了office结束符，调用相应规则的end方法。
+         · 最后遇到了employee结束符，调用相应规则的end方法。-->
+
+<!-- 引出Rule对象  默认已经定义了一些规则-->
+<!---->
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<employee firstName="Brian" lastName="May">
+    <office>
+        <address streeName="Wellington Street" streetNumber="110"/>
+    </office>
+</employee>

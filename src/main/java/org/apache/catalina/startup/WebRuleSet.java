@@ -81,6 +81,10 @@ import org.xml.sax.Attributes;
  * @version $Revision: 1.1 $ $Date: 2001/10/17 00:44:02 $
  */
 
+//WebRuleSet是org.apache.commons.digester.RuleSetBase类的一个子类。
+
+// 如果你熟悉Servlet应用程序部署文件的语法并且读过本章前面的Digester部分，
+// 可以很容易的理解他是如何工作的
 public class WebRuleSet extends RuleSetBase {
 
 

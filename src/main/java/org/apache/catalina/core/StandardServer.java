@@ -2182,18 +2182,15 @@ public final class StandardServer
 //    StandardServer的start方法的实现将会启动所有服务及其相关组件，
 //    -----------------------用来启动连接器和容器---------
     public void start() throws LifecycleException {
-
         // Validate and update our current component state
         if (started)
             throw new LifecycleException
                 (sm.getString("standardServer.start.started"));
         // Notify our interested LifecycleListeners
         lifecycle.fireLifecycleEvent(BEFORE_START_EVENT, null);
-
         lifecycle.fireLifecycleEvent(START_EVENT, null);
 //        该方法使用了一个started布尔变量来避免一个服务器被启动两次。Stop方法会重置该变量的值。
         started = true;
-
         // Start our defined Services
         synchronized (services) {
             for (int i = 0; i < services.length; i++) {
@@ -2201,10 +2198,8 @@ public final class StandardServer
                     ((Lifecycle) services[i]).start();
             }
         }
-
         // Notify our interested LifecycleListeners
         lifecycle.fireLifecycleEvent(AFTER_START_EVENT, null);
-
     }
 
 
