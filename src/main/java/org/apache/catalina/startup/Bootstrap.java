@@ -18,6 +18,9 @@ import java.lang.reflect.Method;
  * @version $Revision: 1.36 $ $Date: 2002/04/01 19:51:31 $
  */
 
+//。Bootstrap类创建一个Catalina的实例并调用它的process方法。
+// 理论上，这两个类可以合成一个类。
+// 但是，为了支持Tomcat的多模式启动，提供了多个引导类。
 public final class Bootstrap {
 
 

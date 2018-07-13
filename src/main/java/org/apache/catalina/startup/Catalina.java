@@ -98,6 +98,8 @@ import org.xml.sax.InputSource;
  * @version $Revision: 1.48 $ $Date: 2002/05/23 17:22:37 $
  */
 
+//Catalina类用来启动和停止一个服务器对象并且解析Tomcat配置文件，即server.xml
+//    Catalina是Tomcat的启动类。它包含一个用于解析%CATALINE_HOME%/conf目录下面server.xml文件的Digester
 public class Catalina {
 
 

@@ -83,6 +83,7 @@ import org.apache.commons.daemon.DaemonContext;
  * @version $Revision: 1.17 $ $Date: 2002/09/16 15:36:54 $
  */
 
+//将Tomcat作为一个Windows NT系统的服务来运行。
 public final class BootstrapService 
     implements Daemon {
 
