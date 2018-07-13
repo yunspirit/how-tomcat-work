@@ -99,7 +99,7 @@ import org.xml.sax.InputSource;
  */
 
 //Catalina类用来启动和停止一个服务器对象并且解析Tomcat配置文件，即server.xml
-//    Catalina是Tomcat的启动类。它包含一个用于解析%CATALINE_HOME%/conf目录下面server.xml文件的Digester
+//Catalina是Tomcat的启动类。它包含一个用于解析%CATALINE_HOME%/conf目录下面server.xml文件的Digester
 public class Catalina {
 
 
@@ -157,6 +157,9 @@ public class Catalina {
      *
      * @param args Command line arguments
      */
+//    1、正常情况下，需要Bootstrap类来初始化Catalina对象并调用它的process方法，
+//    即使Catalina有自己的main方法。
+//    2、在下一节里将会介绍一个Bootstrap类
     public static void main(String args[]) {
 
         (new Catalina()).process(args);
@@ -168,11 +171,18 @@ public class Catalina {
      *
      * @param args Command line arguments
      */
+//    1、可以首先初始化一个Catalina对象并调用它的process方法来启动Tomcat
+//    2、在调用该方法的时候必须传递合适的参数
+//    3、第一个参数用来确定你是否需要用关闭命令来关闭Tomcat
+//    4、其它的参数，如-help, -config, -debug，-nonaming。
     public void process(String args[]) {
 
+//        设置两个系统属性catalina.home和catalina.base.catalina.home
+//        默认值是user.dir属性的值
         setCatalinaHome();
         setCatalinaBase();
         try {
+//            Process方法检查arguments方法的返回值，如果为true就调用execute方法。
             if (arguments(args))
                 execute();
         } catch (Exception e) {
@@ -271,6 +281,9 @@ public class Catalina {
     /**
      * Create and configure the Digester we will be using for startup.
      */
+//    1、用于创建Digester实例然后向其添加规则来解析server.xml。
+//    2、该文件用于Tomcat配置，位于%CATALINE_HOME%/conf目录下面。
+//    3、向Digester添加的规则是理解Tomcat配置的关键
     protected Digester createStartDigester() {
 
         // Initialize the digester
@@ -280,10 +293,14 @@ public class Catalina {
         digester.setValidating(false);
 
         // Configure the actions we will be using
+//        在server.xml中的前三个规则是针对server元素的，server元素是根元素
+//        在遇到server元素的时候，Digester要创建org.apache.catalina.core.StandardServer的实例
         digester.addObjectCreate("Server",
                                  "org.apache.catalina.core.StandardServer",
                                  "className");
+//        第二条规则适用属性的值填充server对象对应属性的值。
         digester.addSetProperties("Server");
+//        Server对象压入堆栈并将其与下一个对象（Catalina对象）相关联，使用的方法是setServer方法
         digester.addSetNext("Server",
                             "setServer",
                             "org.apache.catalina.Server");
@@ -367,6 +384,7 @@ public class Catalina {
     /**
      * Create and configure the Digester we will be using for shutdown.
      */
+//    createStopDigester方法返回一个Digester对象用于优雅的停止服务器对象
     protected Digester createStopDigester() {
 
         // Initialize the digester
@@ -393,6 +411,7 @@ public class Catalina {
      */
     protected void execute() throws Exception {
 
+//        start方法或者stop方法来启动或者停止Tomcat
         if (starting)
             start();
         else if (stopping)
@@ -432,6 +451,15 @@ public class Catalina {
     /**
      * Start a new server instance.
      */
+//    1、创建一个Digester实例来处理server.xml文件
+//    2、在解析XML文件之前，start方法调用的Digester的push方法，传递当前的Catalina对象。
+//       这将导致Catalina对象称为在Digester的内部堆栈第一个对象。
+//    3、解析文件可以设置服务器对象的变量，服务器默认情况下是类型org.apache.catalina.core.StandardServer
+//    4、start方法调用server的initialize方法，并调用server的start方法。
+//    然后Catalina的start方法再调用await方法，服务器分配一个线程等待关机命令
+//    5、该方法不返回，直到收到关机命令。
+//    6、当await方法返回，在Catalina中的start方法调用的服务器对象的stop方法用于停止服务器以及所有组件。
+//    7、tart方法也采用了关闭钩子的方法确保在服务器对象的stop方法总是执行，即使用户突然退出该应用程序。
     protected void start() {
 
         // Create and execute our Digester
@@ -552,6 +580,9 @@ public class Catalina {
     /**
      * Stop an existing server instance.
      */
+//    1、注意stop方法通过createStopDigester方法创建了一个Digester实例。
+//    2、把当前Catalina对象压入到Digester内部栈中，并解析其配置文件
+//    3、在收到关闭命令后，stop方法停止服务器对象。
     protected void stop() {
 
         // Create and execute our Digester

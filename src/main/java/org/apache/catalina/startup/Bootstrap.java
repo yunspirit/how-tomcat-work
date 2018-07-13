@@ -18,9 +18,13 @@ import java.lang.reflect.Method;
  * @version $Revision: 1.36 $ $Date: 2002/04/01 19:51:31 $
  */
 
-//。Bootstrap类创建一个Catalina的实例并调用它的process方法。
+//1、Bootstrap类创建一个Catalina的实例并调用它的process方法。
 // 理论上，这两个类可以合成一个类。
 // 但是，为了支持Tomcat的多模式启动，提供了多个引导类。
+
+// 2、Bootstrap类提供了Tomcat的启动入口。当你运行startup.bat或者是startup.sh的时候，
+//           实际上运行的就是该类中的主方法。
+// 3、主方法创建三个类加载器并初始化Catalina类，然后调用Catalina的process方法。
 public final class Bootstrap {
 
 
@@ -54,8 +58,17 @@ public final class Bootstrap {
             System.setProperty("catalina.base", getCatalinaHome());
 
         // Construct the class loaders we will need
+//        1、Bootstrap类的主方法还构造了三个加载器用于不同的目的。
+//        2、使用不同加载器的主要原因是防止WEB-INF/classes以及WEB-INF/lib下面的类。
+//        %CATALINE_HOME%/common/lib目录下的jar包也可以访问。
         ClassLoader commonLoader = null;
+//        catalinaLoader负责加载Catalina容器要求的类，
+//        可以加载%CATALINA_HOME%/server/classes和%CATALINA_HOME%/server/lib目录下面的类
         ClassLoader catalinaLoader = null;
+//        1、sharedLoader可以访问%CATALINA_HOME%/shared/classes和%CATALJNA_HOME%/shared/lib目录下的类
+//        2、以及commondLoader类可以访问的类。
+//        3、sharedLoader是该Tomcat容器相关联的所有web应用的类加载器的父类加载器。
+//        4、注意一点是sharedLoader加载器不能加载Catalina的内部类加载器以及环境变量下面的CLASSPATH下面的类
         ClassLoader sharedLoader = null;
         try {
 
@@ -105,11 +118,13 @@ public final class Bootstrap {
             // Instantiate a startup class instance
             if (debug >= 1)
                 log("Loading startup class");
+//            创建完三个类加载器后，主方法加载了Catalina类然后创建它的实例并将其赋值给startupInstance变量
             Class startupClass =
                 catalinaLoader.loadClass
-                ("org.apache.catalina.startup.Catalina");
-            Object startupInstance = startupClass.newInstance();
+                ("org.apache.catalina.stasrtup.Catalina");
+            Object startupInstance = startupClas.newInstance();
 
+//            然后调用setParentClassLoader方法，将sharedLoader作为参数：
             // Set the shared extensions class loader
             if (debug >= 1)
                 log("Setting startup class properties");
@@ -146,6 +161,7 @@ public final class Bootstrap {
     /**
      * Get the value of the catalina.home environment variable.
      */
+//    如果在前面没有提供catalina.home的值，它会使用user.dir的值。
     private static String getCatalinaHome() {
         return System.getProperty("catalina.home",
                                   System.getProperty("user.dir"));
@@ -155,6 +171,7 @@ public final class Bootstrap {
     /**
      * Get the value of the catalina.base environment variable.
      */
+//    返回catalina.base的值，如果该值不存在返回catalina.home的值。
     private static String getCatalinaBase() {
         return System.getProperty("catalina.base", getCatalinaHome());
     }
