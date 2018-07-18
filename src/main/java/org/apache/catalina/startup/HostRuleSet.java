@@ -74,7 +74,9 @@ import org.apache.commons.digester.RuleSetBase;
  * @author Craig R. McClanahan
  * @version $Revision: 1.2 $ $Date: 2001/11/11 19:58:35 $
  */
-
+//
+//        1、作为一个RuleSetBase类的子类，
+//        2、HostRuleSet类提供了addRuleInstances方法的实现，该方法用于为RuleSet定义规则。
 public class HostRuleSet extends RuleSetBase {
 
 
@@ -129,6 +131,9 @@ public class HostRuleSet extends RuleSetBase {
      * @param digester Digester instance to which the new Rule instances
      *  should be added.
      */
+//   1、 Server/Service/Engine/Host的模式的时候创建一个org.apache.catalina.startup.HostConfig类的对象，
+//    并将其作为一个生命周期监听器添加到主机上。
+//   2、换句话说，HostConfig处理StandardHost的start方法和stop方法触发的事件。
     public void addRuleInstances(Digester digester) {
 
         digester.addObjectCreate(prefix + "Host",
