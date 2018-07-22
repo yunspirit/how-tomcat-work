@@ -199,7 +199,7 @@ import org.apache.naming.resources.WARDirContext;
  * @author Craig R. McClanahan
  * @version $Revision: 1.28 $ $Date: 2002/09/18 14:00:44 $
  */
-
+//Manager应用可以用于管理部署应用，并说明了如何从包装器对象获得其它对象。另外可以设计一个更复杂的Servlet来管理Tomcat。
 public class ManagerServlet
     extends HttpServlet implements ContainerServlet {
 
