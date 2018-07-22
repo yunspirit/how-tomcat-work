@@ -78,7 +78,11 @@ import java.net.URL;
  * @author Craig R. McClanahan
  * @version $Revision: 1.6 $ $Date: 2002/04/09 23:48:21 $
  */
-
+//
+//1、部署器跟主机相关联，用于安装子容器。
+//   2、     往主机安装上下文意味着创建StandardContext类的实例并将其添加到主机（host）。
+//   3、     当主机启动的时候，子上下文也启动（父容器的start方法总是启动子容器的start方法，包装器除外）。
+//   4、     但是使用部署器可以独立开始和停止单独的上下文。
 /* public interface Deployer extends Container { */
 public interface Deployer  {
 

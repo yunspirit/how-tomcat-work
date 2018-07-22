@@ -86,7 +86,7 @@ import org.apache.commons.digester.Digester;
  * @author Craig R. McClanahan
  * @version $Revision: 1.10 $ $Date: 2002/08/01 01:41:43 $
  */
-
+//StandardHost使用一个org.apache.catalina.core.StandardHostDeployer类型的帮助类来部署和安装web应用程序
 public class StandardHostDeployer implements Deployer {
 
 
@@ -99,6 +99,7 @@ public class StandardHostDeployer implements Deployer {
      *
      * @param host The StandardHost we are associated with
      */
+//    它的构造函数接受一个StandardHost实例
     public StandardHostDeployer(StandardHost host) {
 
         super();
@@ -201,6 +202,7 @@ public class StandardHostDeployer implements Deployer {
      * @exception java.io.IOException if an input/output error was encountered
      *  during installation
      */
+//        安装描述符（descriptor）
     public synchronized void install(String contextPath, URL war)
         throws IOException {
 
@@ -286,6 +288,7 @@ public class StandardHostDeployer implements Deployer {
      * @exception java.io.IOException if an input/output error was encountered
      *  during installation
      */
+//    一个上下文路径的字符串表示形式或者一个URL来表示WAR文件
     public synchronized void install(URL config, URL war) throws IOException {
 
         // Validate the format and state of our arguments
@@ -434,6 +437,7 @@ public class StandardHostDeployer implements Deployer {
      * @exception java.io.IOException if an input/output error occurs during
      *  startup
      */
+//    StandardHostDeployer的start方法用于启动一个上下文
     public void start(String contextPath) throws IOException {
         // Validate the format and state of our arguments
         if (contextPath == null)
@@ -470,6 +474,7 @@ public class StandardHostDeployer implements Deployer {
      * @exception java.io.IOException if an input/output error occurs while stopping
      *  the web application
      */
+//    要停止一个上下文，可以使用StandardHostDeployer的stop方法
     public void stop(String contextPath) throws IOException {
 
         // Validate the format and state of our arguments

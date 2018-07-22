@@ -101,6 +101,9 @@ import org.apache.catalina.util.StringManager;
  * @version $Revision: 1.23 $ $Date: 2002/05/30 22:12:28 $
  */
 
+//1、生命周期监听器。 StandardHost实例的start方法启动的时候，它触发START事件。
+//   2、     HostConfig的响应是它会调用它自己的start方法，
+//        它会部署和安装所有的特定目录下面的web应用程序
 public class HostConfig
     implements LifecycleListener, Runnable {
 
@@ -340,9 +343,12 @@ public class HostConfig
      *
      * @param event The lifecycle event that has occurred
      */
+//  每次调用StandardHost启动或停止的时候，都会触发lifecycleEvent方法。
     public void lifecycleEvent(LifecycleEvent event) {
 
         // Identify the host we are associated with
+//        如果主机是org.apache.catalina.core.StandardHost的一个实例，
+//        将会调用setDeployXML，setLiveDeploy，setUnpackWARs方法。
         try {
             host = (Host) event.getLifecycle();
             if (host instanceof StandardHost) {
@@ -350,8 +356,11 @@ public class HostConfig
                 if (hostDebug > this.debug) {
                     this.debug = hostDebug;
                 }
+//                isDeployXML方法标志该主机是否部署一个上下文部署文件。deployXML属性的默认值是true
                 setDeployXML(((StandardHost) host).isDeployXML());
+//                liveDeploy属性的值标志是否需要周期性检查新部署
                 setLiveDeploy(((StandardHost) host).getLiveDeploy());
+//                unpackWARs属性定义了是否需要解压来部署WAR文件。
                 setUnpackWARs(((StandardHost) host).isUnpackWARs());
             }
         } catch (ClassCastException e) {
@@ -361,6 +370,7 @@ public class HostConfig
 
         // Process the event that has occurred
         if (event.getType().equals(Lifecycle.START_EVENT))
+//            根据接收到的START事件，HostConfig对象的lifecycleEvent方法调用start方法来部署应用程序
             start();
         else if (event.getType().equals(Lifecycle.STOP_EVENT))
             stop();
@@ -390,6 +400,9 @@ public class HostConfig
      * Deploy applications for any directories or WAR files that are found
      * in our "application root" directory.
      */
+//   1、 deployApps方法获得主机的appBase属性，appBase默认的有一个值为webapps。
+//
+//   2、 部署过程任务所有的位于%CATALINE_HOME%/webapps目录下面的子目录为一个应用程序。
     protected void deployApps() {
 
         if (!(host instanceof Deployer))
@@ -400,6 +413,7 @@ public class HostConfig
         File appBase = appBase();
         if (!appBase.exists() || !appBase.isDirectory())
             return;
+//        传递appBase文件以及webapps目录下的文件数组
         String files[] = appBase.list();
 
         deployDescriptors(appBase, files);
@@ -412,6 +426,10 @@ public class HostConfig
     /**
      * Deploy XML context descriptors.
      */
+//    来部署
+//    1、所有的%CATALINA_HOME%/webapps 下面（Tomcat4）
+//    2、%CATALINA_HOME%/server/webapps/ （Tomcat5）
+//    下面的XML文件。
     protected void deployDescriptors(File appBase, String[] files) {
 
         if (!deployXML)
@@ -461,6 +479,8 @@ public class HostConfig
     /**
      * Deploy WAR files.
      */
+//    可以部署war文件形式的web应用。
+//    部署%CATALINA_HOME%/webapps目录下的WAR文件。
     protected void deployWARs(File appBase, String[] files) {
 
         for (int i = 0; i < files.length; i++) {
@@ -527,6 +547,8 @@ public class HostConfig
     /**
      * Deploy directories.
      */
+//    将整个目录拷贝到%CATALINA_HOME%/webapps目录下来部署一个应用。
+//    使用deployDirectories来部署目录
     protected void deployDirectories(File appBase, String[] files) {
 
         for (int i = 0; i < files.length; i++) {
@@ -871,10 +893,12 @@ public class HostConfig
         if (debug >= 1)
             log(sm.getString("hostConfig.start"));
 
+//        如果autoDeploy属性为真，start方法调用deployApps方法
         if (host.getAutoDeploy()) {
             deployApps();
         }
 
+//        如果liveDeploy为真他还调用threadStart方法启动一个新线程
         if (isLiveDeploy()) {
             threadStart();
         }
@@ -929,8 +953,11 @@ public class HostConfig
      * @exception IllegalStateException if we should not be starting
      *  a background thread now
      */
+//    threadStart分配一个新线程并调用它的run方法，run方法周期性的检查在web.xml文件中的已存在部署是否有改变
     protected void threadStart() {
-
+//
+//        threadSleep方法让线程休眠checkInterval属性定义的时间，它的默认值是15，这意味着检查没15秒进行一次。
+//        在Tomcat5中，HostConfig没有独立的线程而是使用backgroundProcess方法来周期性的进行检查事件。
         // Has the background thread already been started?
         if (thread != null)
             return;
@@ -940,6 +967,7 @@ public class HostConfig
             log(" Starting background thread");
         threadDone = false;
         threadName = "HostConfig[" + host.getName() + "]";
+//        查看run（）
         thread = new Thread(this, threadName);
         thread.setDaemon(true);
         thread.start();
@@ -993,6 +1021,8 @@ public class HostConfig
      * The background thread that checks for web application autoDeploy
      * and changes to the web.xml config.
      */
+//    threadSleep方法让线程休眠checkInterval属性定义的时间，它的默认值是15，这意味着检查15秒进行一次。
+//    在Tomcat5中，HostConfig没有独立的线程而是使用backgroundProcess方法来周期性的进行检查事件。
     public void run() {
 
         if (debug >= 1)
