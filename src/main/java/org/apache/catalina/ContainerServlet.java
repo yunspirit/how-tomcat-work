@@ -76,6 +76,10 @@ package org.apache.catalina;
  * @version $Revision: 1.3 $ $Date: 2001/07/22 20:13:30 $
  */
 
+//  1、一个实现了ContainerServlet接口的servlet可以访问StandardWrapper对象
+//
+//  2、可以访问包装器，它也能访问表示该web应用的上下文对象，以及该上下文隶属的StandardHost实例
+//        以及其它对象
 public interface ContainerServlet {
 
 

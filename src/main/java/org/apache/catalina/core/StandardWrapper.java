@@ -957,9 +957,13 @@ public final class StandardWrapper
 //            Special handling for ContainerServlet instances
             if ((servlet instanceof ContainerServlet) &&
                 isContainerProvidedServlet(actualClass)) {
-System.out.println("calling setWrapper");                  
+//                1、servlet表示要加载的servlet（在这里是ManagerServlet） 在if语句块中，
+//                2、如果servlet是org.apache.catalina.ContainerServlet的实例
+//                3、并且isContainerProvidedServlet方法返回true。
+//                4、就调用ContainerServlet接口的setWrapper接口。
+                        System.out.println("calling setWrapper");
                 ((ContainerServlet) servlet).setWrapper(this);
-System.out.println("after calling setWrapper");                  
+                        System.out.println("after calling setWrapper");
             }
 
 
@@ -968,10 +972,10 @@ System.out.println("after calling setWrapper");
             try {
                 instanceSupport.fireInstanceEvent(InstanceEvent.BEFORE_INIT_EVENT,
                                                   servlet);
-//                注意该方法传递一个façade变量，改变量是一个javax.servlet.ServletConfig对象
-//                -------------------------init------------------------
-//                StandardWrapper的loadServlet方法在加载了loaded方法之后调用的发送者的init方法 。
-//                init方法传递一个javax.servlet.ServletConfig实例，你可能想知道一个StandardWrapper对象如何获得ServletConfig对象。
+//             注意该方法传递一个façade变量，改变量是一个javax.servlet.ServletConfig对象
+//             -------------------------init------------------------
+//             StandardWrapper的loadServlet方法在加载了loaded方法之后调用的发送者的init方法 。
+//             init方法传递一个javax.servlet.ServletConfig实例，你可能想知道一个StandardWrapper对象如何获得ServletConfig对象。
                 servlet.init(facade);
                 // Invoke jspInit on JSP pages
                 if ((loadOnStartup > 0) && (jspFile != null)) {
@@ -1306,6 +1310,7 @@ System.out.println("after calling setWrapper");
      *
      * @param name Name of the class to be checked
      */
+//
     private boolean isContainerProvidedServlet(String classname) {
 
         if (classname.startsWith("org.apache.catalina.")) {
@@ -1314,6 +1319,8 @@ System.out.println("after calling setWrapper");
         try {
             Class clazz =
                 this.getClass().getClassLoader().loadClass(classname);
+//            如果表示当前对象的类或接口跟clazz表示的类或接口或相同，或是超类、超接口的时候
+//            java.lang.Class类的isAssignableFrom(Class clazz)返回true。
             return (ContainerServlet.class.isAssignableFrom(clazz));
         } catch (Throwable t) {
             return (false);
